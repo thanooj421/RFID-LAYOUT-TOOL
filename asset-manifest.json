@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/thanooj421/RFID-LAYOUT-TOOL.git/static/css/main.e6c13ad2.css",
-    "main.js": "/thanooj421/RFID-LAYOUT-TOOL.git/static/js/main.7078f16c.js",
-    "static/js/453.2eb8918f.chunk.js": "/thanooj421/RFID-LAYOUT-TOOL.git/static/js/453.2eb8918f.chunk.js",
-    "index.html": "/thanooj421/RFID-LAYOUT-TOOL.git/index.html",
-    "main.e6c13ad2.css.map": "/thanooj421/RFID-LAYOUT-TOOL.git/static/css/main.e6c13ad2.css.map",
-    "main.7078f16c.js.map": "/thanooj421/RFID-LAYOUT-TOOL.git/static/js/main.7078f16c.js.map",
-    "453.2eb8918f.chunk.js.map": "/thanooj421/RFID-LAYOUT-TOOL.git/static/js/453.2eb8918f.chunk.js.map"
+    "main.css": "/RFID-LAYOUT-TOOL/static/css/main.e6c13ad2.css",
+    "main.js": "/RFID-LAYOUT-TOOL/static/js/main.fbd84b0f.js",
+    "static/js/453.2eb8918f.chunk.js": "/RFID-LAYOUT-TOOL/static/js/453.2eb8918f.chunk.js",
+    "index.html": "/RFID-LAYOUT-TOOL/index.html",
+    "main.e6c13ad2.css.map": "/RFID-LAYOUT-TOOL/static/css/main.e6c13ad2.css.map",
+    "main.fbd84b0f.js.map": "/RFID-LAYOUT-TOOL/static/js/main.fbd84b0f.js.map",
+    "453.2eb8918f.chunk.js.map": "/RFID-LAYOUT-TOOL/static/js/453.2eb8918f.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.7078f16c.js"
+    "static/js/main.fbd84b0f.js"
   ]
 }
