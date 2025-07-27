@@ -11,13 +11,13 @@ const LCNonInterlockedUnmannedSVG = () => (
     <path
       d="M4.99955 10274L5 0"
       stroke="black"
-      stroke-width="20"
+      stroke-width="10"
       stroke-dasharray="70 70"
     />
     <path
       d="M689 10274L689 0"
       stroke="black"
-      stroke-width="20"
+      stroke-width="10"
       stroke-dasharray="70 70"
     />
   </svg>

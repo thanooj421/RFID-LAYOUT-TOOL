@@ -13,6 +13,7 @@ const GlobalTagFormCard = ({
   stationBAbsKm,
   onValidateField,
   isTrackLengthDefined,
+  handleTagIdBlur,
 }) => {
   const handleChange = (field) => (e) => {
     const value = e.target.value;
@@ -159,14 +160,10 @@ const GlobalTagFormCard = ({
         </label>
         <input
           type="text"
-          id={`tagId-${tagConfig.id}`}
           value={tagConfig.tagId}
-          onChange={(e) => {
-            if (/^\d*\.?\d*$/.test(e.target.value)) {
-              onUpdate(tagConfig.id, "tagId", e.target.value);
-            }
-          }}
-          placeholder="e.g., 101"
+          onChange={(e) => onUpdate(tagConfig.id, "tagId", e.target.value)}
+          onBlur={(e) => handleTagIdBlur(tagConfig.id, e.target.value)}
+          placeholder="Tag ID"
           style={{
             padding: "8px",
             borderRadius: "4px",

@@ -8,7 +8,7 @@ import CautionBoardFormCard from "./components/CautionBoardFormCard";
 import LCGateFormCard from "./components/LCGateFormCard";
 import PointsFormCard from "./components/PointsFormCard";
 import StationDetailsForm from "./components/StationDetailsForm";
-
+import TagRangeSection from "./components/TagRangeSection";
 // Import SVG components
 import SignalDownMainNominalSVG from "./svgs/SignalDownMainNominalSVG";
 import SignalUpMainReverseSVG from "./svgs/SignalUpMainReverseSVG";
@@ -59,6 +59,27 @@ const App = () => {
     },
   ]);
   const [nextTagConfigId, setNextTagConfigId] = useState(2);
+
+  const [tagRanges, setTagRanges] = useState([{ id: 1, start: "", end: "" }]);
+  const [nextTagRangeId, setNextTagRangeId] = useState(2);
+
+  const handleTagRangeChange = (id, field, value) => {
+    setTagRanges((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
+    );
+  };
+
+  const handleAddTagRange = () => {
+    setTagRanges((prev) => [
+      ...prev,
+      { id: nextTagRangeId, start: "", end: "" },
+    ]);
+    setNextTagRangeId((id) => id + 1);
+  };
+
+  const handleRemoveTagRange = (id) => {
+    setTagRanges((prev) => prev.filter((r) => r.id !== id));
+  };
 
   const [signals, setSignals] = useState([
     {
@@ -277,12 +298,46 @@ const App = () => {
     }
     return true;
   };
+  //Logic for checking the tag Id whether the tag Id is within the specified range
+  const isTagValid = (tagId, currentConfigId = null) => {
+    const tagIdNumber = parseInt(tagId);
+    if (isNaN(tagIdNumber)) return false;
+
+    const inRange = tagRanges.some(
+      (range) =>
+        range.start !== "" &&
+        range.end !== "" &&
+        tagIdNumber >= parseInt(range.start) &&
+        tagIdNumber <= parseInt(range.end)
+    );
+    if (!inRange) {
+      alert(
+        `Tag ID ${tagId} is not within any of the defined tag ranges. Please enter the Tag ID within the mentioned range`
+      );
+      return false;
+    }
+    const allTagIds = globalTagConfigs
+      .filter((t) => t.id !== currentConfigId)
+      .map((t) => t.tagId)
+      .filter(Boolean);
+    if (allTagIds.filter((existingId) => existingId === tagId).length > 0) {
+      alert(
+        `The tag ${tagId} has already been used. Please Enter the another Tag ID within the mentioned range`
+      );
+      return false;
+    }
+    return true;
+  };
 
   const handleGlobalTagChange = (id, field, value) => {
     setGlobalTagConfigs((prevConfigs) =>
       prevConfigs.map((config) => {
         if (config.id === id) {
           let updatedConfig = { ...config, [field]: value };
+
+          if (field === "tagId") {
+            updatedConfig.tagId = value;
+          }
 
           if (field === "numTags") {
             const num = parseInt(value, 10);
@@ -311,6 +366,18 @@ const App = () => {
         return config;
       })
     );
+  };
+
+  const handleTagIdBlur = (id, value) => {
+    if (value !== "" && /^(\d+(\.\d+)?)$/.test(value)) {
+      if (!isTagValid(value, id)) {
+        setGlobalTagConfigs((prevConfigs) =>
+          prevConfigs.map((config) =>
+            config.id === id ? { ...config, tagId: "" } : config
+          )
+        );
+      }
+    }
   };
 
   const validateGlobalTagField = (id, field, value) => {
@@ -1537,7 +1604,7 @@ const App = () => {
           LCGateSvgComponent = LCInterlockedMannedSVG;
           svgWidth = 4610;
           svgHeight = 10274;
-          scale = (verticalSpan * 2) / svgHeight;
+          scale = Math.max((verticalSpan * 2) / svgHeight, 0.08);
           translateX = lcVisualX - (svgWidth * scale) / 2;
           translateY = centerY - (svgHeight * scale) / 2;
           centerDashedX = (1889.25 + 2727) / 2;
@@ -1548,7 +1615,7 @@ const App = () => {
           LCGateSvgComponent = LCNonInterlockedUnmannedSVG;
           svgWidth = 694;
           svgHeight = 10274;
-          scale = (verticalSpan * 2) / svgHeight;
+          scale = Math.max((verticalSpan * 2) / svgHeight, 0.08);
           translateX = lcVisualX - (svgWidth * scale) / 2;
           translateY = centerY - (svgHeight * scale) / 2;
           centerDashedX = (5 + 689) / 2;
@@ -1662,6 +1729,7 @@ const App = () => {
     stationB,
     tracks,
     globalTagConfigs,
+    tagRanges,
     signals,
     shunts,
     bslbs,
@@ -1732,6 +1800,22 @@ const App = () => {
             tagId: gt.tagId !== null ? gt.tagId.toString() : "",
           }))
         );
+
+        setTagRanges(
+          loadedData.tagRanges && loadedData.tagRanges.length > 0
+            ? loadedData.tagRanges.map((r, idx) => ({
+                id: r.id !== undefined ? r.id : idx + 1,
+                start: r.start !== undefined ? r.start.toString() : "",
+                end: r.end !== undefined ? r.end.toString() : "",
+              }))
+            : [{ id: 1, start: "", end: "" }]
+        );
+        const maxTagRangeId =
+          loadedData.tagRanges && loadedData.tagRanges.length > 0
+            ? Math.max(...loadedData.tagRanges.map((r) => r.id || 0))
+            : 1;
+        setNextTagRangeId(maxTagRangeId + 1);
+
         setSignals(
           loadedData.signals.map((s) => ({
             ...s,
@@ -2053,6 +2137,13 @@ const App = () => {
 
         {activeAppTab === "tags" && (
           <div style={{ padding: "15px" }}>
+            <TagRangeSection
+              tagRanges={tagRanges}
+              handleTagRangeChange={handleTagRangeChange}
+              handleAddTagRange={handleAddTagRange}
+              handleRemoveTagRange={handleRemoveTagRange}
+            />
+
             <h3 style={{ marginTop: "0", marginBottom: "20px", color: "#333" }}>
               Global Tags Configuration
             </h3>
@@ -2098,6 +2189,7 @@ const App = () => {
                 onValidateField={validateGlobalTagField}
                 isTrackLengthDefined={isTrackLengthDefined}
                 isAbsDirectionNominal={isAbsDirectionNominal}
+                handleTagIdBlur={handleTagIdBlur}
               />
             ))}
           </div>

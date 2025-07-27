@@ -2,7 +2,7 @@
   "name": "rfidlayouttool",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://github.com/thanooj421/RFID-LAYOUT-TOOL.git",
+  "homepage": "https://thanooj421.github.io/RFID-LAYOUT-TOOL",
   "dependencies": {
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",

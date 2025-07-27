@@ -47,6 +47,11 @@ db.exec(`
     tag_id TEXT
   );
 
+  CREATE TABLE IF NOT EXISTS tag_ranges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    start TEXT,
+    end TEXT);
+
   CREATE TABLE IF NOT EXISTS signals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     signal_name TEXT,
@@ -104,6 +109,7 @@ app.post("/api/save-config", (req, res) => {
     stationB,
     tracks,
     globalTagConfigs,
+    tagRanges,
     signals,
     shunts,
     bslbs,
@@ -122,6 +128,7 @@ app.post("/api/save-config", (req, res) => {
       db.exec("DELETE FROM stations");
       db.exec("DELETE FROM tracks");
       db.exec("DELETE FROM global_tags");
+      db.exec("DELETE FROM tag_ranges");
       db.exec("DELETE FROM signals");
       db.exec("DELETE FROM shunts");
       db.exec("DELETE FROM bslbs");
@@ -173,6 +180,14 @@ app.post("/api/save-config", (req, res) => {
           parseFloat(tag.distanceBetweenTagsMeters),
           tag.tagId
         );
+      });
+
+      // Insert Tag Ranges
+      const insertTagRange = db.prepare(`
+        insert into tag_ranges (start,end)
+        values (?, ?)`);
+      (tagRanges || []).forEach((range) => {
+        insertTagRange.run(range.start, range.end);
       });
 
       // Insert Signals
@@ -276,6 +291,7 @@ app.get("/api/load-config", (req, res) => {
 
     const tracks = db.prepare("SELECT * FROM tracks").all();
     const globalTagConfigs = db.prepare("SELECT * FROM global_tags").all();
+    const tagRanges = db.prepare("SELECT * FROM tag_ranges").all();
     const signals = db.prepare("SELECT * FROM signals").all();
     const shunts = db.prepare("SELECT * FROM shunts").all();
     const bslbs = db.prepare("SELECT * FROM bslbs").all();
@@ -314,6 +330,12 @@ app.get("/api/load-config", (req, res) => {
                 ? gt.distance_between_tags_meters.toString()
                 : "",
             tagId: gt.tag_id !== null ? gt.tag_id.toString() : "",
+          })) || [],
+        tagRanges:
+          tagRanges.map((r) => ({
+            id: r.id,
+            start: r.start,
+            end: r.end,
           })) || [],
         signals:
           signals.map((s) => ({
