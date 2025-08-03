@@ -27,6 +27,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS tracks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tin_id TEXT,
     focus_from REAL,
     focus_to REAL,
     selected_color TEXT,
@@ -150,11 +151,12 @@ app.post("/api/save-config", (req, res) => {
 
       // Insert Tracks
       const insertTrack = db.prepare(`
-        INSERT INTO tracks (focus_from, focus_to, selected_color, track_direction, track_position, track_visual_traversal_direction)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO tracks (tin_id, focus_from, focus_to, selected_color, track_direction, track_position, track_visual_traversal_direction)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
       tracks.forEach((track) => {
         insertTrack.run(
+          track.tinId,
           parseFloat(track.focusFrom),
           parseFloat(track.focusTo),
           track.selectedColor,
@@ -308,6 +310,7 @@ app.get("/api/load-config", (req, res) => {
         tracks:
           tracks.map((t) => ({
             id: t.id,
+            tinId: t.tin_id ? t.tin_id.toString() : "",
             focusFrom: t.focus_from !== null ? t.focus_from.toString() : "",
             focusTo: t.focus_to !== null ? t.focus_to.toString() : "",
             selectedColor: t.selected_color,

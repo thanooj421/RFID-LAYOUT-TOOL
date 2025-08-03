@@ -35,6 +35,7 @@ const App = () => {
   const [tracks, setTracks] = useState([
     {
       id: 1,
+      tinId: "",
       focusFrom: "",
       focusTo: "",
       selectedColor: "red",
@@ -555,6 +556,7 @@ const App = () => {
       ...prevTracks,
       {
         id: nextTrackId,
+        tinId: "",
         focusFrom: "",
         focusTo: "",
         selectedColor: "red",
@@ -988,11 +990,9 @@ const App = () => {
                     VIEWBOX_PADDING_X) /
                   2
                 }" y="${
-          baseYOffsetInGroup + 30
-        }" font-family="Arial" font-size="28" fill="#333" text-anchor="middle" font-weight="bold">
-                    Track ${track.id} - ${
-          isDownMain ? `Down Main` : `Up Main`
-        } (${absDirectionText})
+          baseYOffsetInGroup + 20
+        }" font-family="Arial" font-size="28" fill="#e309ca" text-anchor="middle" font-weight="bold">
+                     ${`N-${track.tinId}`}
                 </text>
             `;
 
@@ -1750,9 +1750,9 @@ const App = () => {
       });
       const data = await response.json();
       if (data.success) {
-        alert(data.message);
+        alert(data.message || "Configuration saved successfully!");
       } else {
-        alert(`Error: ${data.message}`);
+        alert(`Error: ${data.message || "Failed to save configuration."}`);
       }
     } catch (error) {
       console.error("Error saving configuration:", error);
@@ -1781,6 +1781,7 @@ const App = () => {
         setTracks(
           loadedData.tracks.map((t) => ({
             ...t,
+            yinId: t.tinId !== undefined ? t.tinId : "",
             focusFrom: t.focusFrom !== null ? t.focusFrom.toString() : "",
             focusTo: t.focusTo !== null ? t.focusTo.toString() : "",
             trackPosition: t.trackPosition,
@@ -1904,7 +1905,7 @@ const App = () => {
             : 0;
         setNextPointId(maxPointId + 1);
 
-        alert(data.message);
+        alert(data.message || "Configuration loaded successfully!");
       } else {
         alert(`Error: ${data.message}`);
       }
@@ -1970,7 +1971,7 @@ const App = () => {
               fontSize: "14px",
             }}
           >
-            Track Specifics
+            TIN Specifications
           </button>
           <button
             onClick={() => setActiveAppTab("tags")}

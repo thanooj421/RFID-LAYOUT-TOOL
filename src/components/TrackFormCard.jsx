@@ -104,10 +104,34 @@ const TrackFormCard = ({
 
       <div style={{ marginBottom: "15px" }}>
         <label
+          htmlFor={`tinId-${track.id}`}
+          style={{ display: "block", marginBottom: "5px" }}
+        >
+          Track Identification Number (TIN):
+        </label>
+        <input
+          type="number"
+          className="no-arrows"
+          id={`tinId-${track.id}`}
+          value={track.tinId}
+          onChange={handleChange("tinId")}
+          onBlur={handleBlur("tinId")}
+          placeholder="Enter TIN"
+          style={{
+            padding: "8px",
+            borderRadius: "4px",
+            border: "1px solid #ccc",
+            width: "200px",
+          }}
+        />
+      </div>
+
+      <div style={{ marginBottom: "15px" }}>
+        <label
           htmlFor={`focusFrom-${track.id}`}
           style={{ display: "block", marginBottom: "5px" }}
         >
-          Focus from distance (kilometers, ABS value):
+          TIN Start Distance (kilometers, ABS value):
         </label>
         <input
           type="text"
@@ -131,7 +155,7 @@ const TrackFormCard = ({
           htmlFor={`focusTo-${track.id}`}
           style={{ display: "block", marginBottom: "5px" }}
         >
-          Focus to distance (kilometers, ABS value):
+          TIN End Distance (kilometers, ABS value):
         </label>
         <input
           type="text"
@@ -155,7 +179,7 @@ const TrackFormCard = ({
           htmlFor={`selectColor-${track.id}`}
           style={{ display: "block", marginBottom: "5px" }}
         >
-          Select focus area color:
+          TIN Color:
         </label>
         <select
           id={`selectColor-${track.id}`}
