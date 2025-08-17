@@ -1,8 +1,6 @@
 import React from "react";
 import RemoveButton from "./common/RemoveButton";
 
-const NUMBER_INPUT_REGEX = /^-?\d*\.?\d*$/;
-
 const BSLBFormCard = ({
   bslb,
   onUpdate,
@@ -11,26 +9,23 @@ const BSLBFormCard = ({
   isTrackLengthDefined,
   stationAAbsKm,
 }) => {
+  // Simplified handleChange, no manual number validation needed
   const handleChange = (field) => (e) => {
     const value = e.target.value;
-    if (field === "abs") {
-      if (value === "" || NUMBER_INPUT_REGEX.test(value)) {
-        onUpdate(bslb.id, field, value);
-      }
-    } else {
-      onUpdate(bslb.id, field, value);
-    }
+    onUpdate(bslb.id, field, value);
   };
 
   return (
     <div
       style={{ padding: "15px", marginBottom: "20px", position: "relative" }}
     >
-      <h4 style={{ marginTop: "0", marginBottom: "15px", color: "#555" }}>
+      <h4 style={{ marginTop: 0, marginBottom: "15px", color: "#555" }}>
         BSLB {bslb.id}
       </h4>
+
       <RemoveButton onClick={() => onRemove(bslb.id)} />
 
+      {/* Select Line */}
       <div style={{ marginBottom: "15px" }}>
         <label
           htmlFor={`bslbSelectLine-${bslb.id}`}
@@ -57,6 +52,7 @@ const BSLBFormCard = ({
         </select>
       </div>
 
+      {/* Direction */}
       <div style={{ marginBottom: "15px" }}>
         <label
           htmlFor={`bslbDirection-${bslb.id}`}
@@ -80,6 +76,7 @@ const BSLBFormCard = ({
         </select>
       </div>
 
+      {/* Absolute Location with number input */}
       <div style={{ marginBottom: "15px" }}>
         <label
           htmlFor={`bslbAbs-${bslb.id}`}
@@ -88,7 +85,8 @@ const BSLBFormCard = ({
           Absolute Location (kilometers):
         </label>
         <input
-          type="text"
+          type="number"
+          step="any"
           id={`bslbAbs-${bslb.id}`}
           value={bslb.abs}
           onChange={handleChange("abs")}

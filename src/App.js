@@ -9,6 +9,7 @@ import LCGateFormCard from "./components/LCGateFormCard";
 import PointsFormCard from "./components/PointsFormCard";
 import StationDetailsForm from "./components/StationDetailsForm";
 import TagRangeSection from "./components/TagRangeSection";
+import TrackSectionFormCard from "./components/TrackSectionFormCard";
 // Import SVG components
 import SignalDownMainNominalSVG from "./svgs/SignalDownMainNominalSVG";
 import SignalUpMainReverseSVG from "./svgs/SignalUpMainReverseSVG";
@@ -167,6 +168,19 @@ const App = () => {
       prev.map((p) => (p.id === id ? { ...p, [field]: value } : p))
     );
   };
+
+  const [trackSections, setTrackSections] = useState([
+    {
+      id: 1,
+      title: "Track Section 1",
+      line: "downMain",
+      direction: "nominal",
+      startAbs: "",
+      endAbs: "",
+    },
+  ]);
+
+  const [nextTrackSectionId, setNextTrackSectionId] = useState(2);
 
   const PAGE_WIDTH_PX = 46.81 * 96;
   const PAGE_HEIGHT_PX = 33.11 * 96;
@@ -712,6 +726,33 @@ const App = () => {
       }
     }
     return true;
+  };
+
+  const handleAddTrackSection = () => {
+    setTrackSections((prev) => [
+      ...prev,
+      {
+        id: nextTrackSectionId,
+        title: `Track Section ${nextTrackSectionId}`,
+        line: "",
+        direction: "nominal",
+        startAbs: "",
+        endAbs: "",
+      },
+    ]);
+    setNextTrackSectionId((id) => id + 1);
+  };
+
+  const handleUpdateTrackSection = (id, field, value) => {
+    setTrackSections((prev) =>
+      prev.map((section) =>
+        section.id === id ? { ...section, [field]: value } : section
+      )
+    );
+  };
+
+  const handleRemoveTrackSection = (id) => {
+    setTrackSections((prev) => prev.filter((section) => section.id !== id));
   };
 
   const availableShuntLineOptions = useMemo(
@@ -1646,6 +1687,82 @@ const App = () => {
       });
     }
 
+    const trackSectionSvgElements = [];
+
+    trackSections.forEach((section) => {
+      // Only render if all required fields are present and valid
+      if (
+        section.line &&
+        section.direction &&
+        section.startAbs !== "" &&
+        section.endAbs !== "" &&
+        !isNaN(parseFloat(section.startAbs)) &&
+        !isNaN(parseFloat(section.endAbs))
+      ) {
+        const startAbs = parseFloat(section.startAbs);
+        const endAbs = parseFloat(section.endAbs);
+
+        // Find the corresponding track line
+        const targetLine = trackLineYCoords.find(
+          (line) => line.direction === section.line
+        );
+        if (!targetLine) return;
+
+        // Map ABS to X coordinates
+        const getVisualX = (absKm) =>
+          VIEWBOX_PADDING_X +
+          (((absKm - minOverallAbsKm) * 1000) / derivedTrackLengthMeters) *
+            INTERNAL_SVG_TRACK_WIDTH;
+
+        const x1 = getVisualX(startAbs);
+        const x2 = getVisualX(endAbs);
+        const y = targetLine.centerY;
+
+        // Draw vertical lines
+        trackSectionSvgElements.push(`
+      <line x1="${x1}" y1="${targetLine.y1}" x2="${x1}" y2="${targetLine.y2}" stroke="#000000ff" stroke-width="2"/>
+      <line x1="${x2}" y1="${targetLine.y1}" x2="${x2}" y2="${targetLine.y2}" stroke="#000000ff" stroke-width="2"/>
+    `);
+
+        // Draw double-headed arrow
+        const arrowY = y;
+        const arrowHeadSize = 15;
+        const arrowColor = "#000000ff";
+        const arrowLineY = arrowY;
+        const arrowStartX = Math.min(x1, x2);
+        const arrowEndX = Math.max(x1, x2);
+
+        // Arrow line
+        trackSectionSvgElements.push(`
+      <line x1="${arrowStartX + 2 * arrowHeadSize}" y1="${arrowLineY}" x2="${
+          arrowEndX - 2 * arrowHeadSize
+        }" y2="${arrowLineY}" stroke="${arrowColor}" stroke-width="3"/>
+      <!-- Left arrow head -->
+      <polygon points="
+        ${arrowStartX + arrowHeadSize},${arrowLineY}
+        ${arrowStartX + 2 * arrowHeadSize},${arrowLineY - arrowHeadSize}
+        ${arrowStartX + 2 * arrowHeadSize},${arrowLineY + arrowHeadSize}
+      " fill="${arrowColor}"/>
+      <!-- Right arrow head -->
+      <polygon points="
+        ${arrowEndX - arrowHeadSize},${arrowLineY}
+        ${arrowEndX - 2 * arrowHeadSize},${arrowLineY - arrowHeadSize}
+        ${arrowEndX - 2 * arrowHeadSize},${arrowLineY + arrowHeadSize}
+      " fill="${arrowColor}"/>
+    `);
+
+        // Section name at the center
+        const midX = (arrowStartX + arrowEndX) / 2;
+        trackSectionSvgElements.push(`
+      <text x="${midX}" y="${
+          arrowLineY - 22
+        }" font-family="Arial" font-size="20" fill="#000000ff" text-anchor="middle" font-weight="bold">
+        ${section.trackSectionName || section.title || ""}
+      </text>
+    `);
+      }
+    });
+
     const viewBoxWidth = INTERNAL_SVG_TRACK_WIDTH + 2 * VIEWBOX_PADDING_X;
     const viewBoxHeight = currentYOffset + VIEWBOX_PADDING_Y;
 
@@ -1667,6 +1784,7 @@ const App = () => {
         ${cautionBoardSvgElements.join("")}
         ${lcGateSvgElements.join("")}
         ${pointsSvgElement}
+        ${trackSectionSvgElements.join("")}
 
       </svg>
     `;
@@ -2086,6 +2204,23 @@ const App = () => {
           >
             Points
           </button>
+
+          <button
+            onClick={() => setActiveAppTab("trackSections")}
+            style={{
+              padding: "8px 12px",
+              backgroundColor:
+                activeAppTab === "trackSections" ? "#007bff" : "#e9ecef",
+              color: activeAppTab === "trackSections" ? "white" : "#333",
+              border: "1px solid #ccc",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "14px",
+              marginLeft: "8px",
+            }}
+          >
+            Track Sections
+          </button>
         </div>
       </div>
 
@@ -2469,6 +2604,40 @@ const App = () => {
                 onUpdate={handleUpdatePoint}
                 onRemove={handleRemovePoint}
                 idx={idx}
+              />
+            ))}
+          </div>
+        )}
+
+        {activeAppTab === "trackSections" && (
+          <div style={{ padding: "15px" }}>
+            <h3 style={{ marginTop: "0", marginBottom: "20px", color: "#333" }}>
+              Track Sections
+            </h3>
+
+            <button
+              onClick={handleAddTrackSection}
+              style={{
+                padding: "10px 20px",
+                backgroundColor: "#28a745",
+                color: "white",
+                border: "none",
+                borderRadius: "5px",
+                cursor: "pointer",
+                fontSize: "16px",
+                marginBottom: "20px",
+              }}
+            >
+              Add New Track Section
+            </button>
+            {trackSections.map((section) => (
+              <TrackSectionFormCard
+                key={section.id}
+                trackSection={section}
+                onUpdate={handleUpdateTrackSection}
+                onRemove={handleRemoveTrackSection}
+                lineOptions={availableLineOptions}
+                isTrackLengthDefined={isTrackLengthDefined}
               />
             ))}
           </div>
