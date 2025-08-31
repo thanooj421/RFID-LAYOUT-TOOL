@@ -22,8 +22,7 @@ import CautionBoardUpMainReverseSVG from "./svgs/CautionBoardUpMainReverseSVG";
 import LCInterlockedMannedSVG from "./svgs/LCInterlockedMannedSVG";
 import LCNonInterlockedUnmannedSVG from "./svgs/LCNonInterlockedUnmannedSVG";
 
-import ReactDOMServer from "react-dom/server"; // Add this import
-
+import ReactDOMServer from "react-dom/server";
 const getSvgString = (Component) => {
   return ReactDOMServer.renderToStaticMarkup(<Component />);
 };
@@ -169,16 +168,7 @@ const App = () => {
     );
   };
 
-  const [trackSections, setTrackSections] = useState([
-    {
-      id: 1,
-      title: "Track Section 1",
-      line: "downMain",
-      direction: "nominal",
-      startAbs: "",
-      endAbs: "",
-    },
-  ]);
+  const [trackSections, setTrackSections] = useState([]);
 
   const [nextTrackSectionId, setNextTrackSectionId] = useState(2);
 
@@ -729,16 +719,17 @@ const App = () => {
   };
 
   const handleAddTrackSection = () => {
+    const newSection = {
+      id: nextTrackSectionId,
+      title: `Track Section ${nextTrackSectionId}`,
+      selectedLine: "",
+      direction: "nominal",
+      startAbs: "",
+      endAbs: "",
+    };
     setTrackSections((prev) => [
-      ...prev,
-      {
-        id: nextTrackSectionId,
-        title: `Track Section ${nextTrackSectionId}`,
-        line: "",
-        direction: "nominal",
-        startAbs: "",
-        endAbs: "",
-      },
+      ...(Array.isArray(prev) ? prev : []),
+      newSection,
     ]);
     setNextTrackSectionId((id) => id + 1);
   };
@@ -1689,10 +1680,10 @@ const App = () => {
 
     const trackSectionSvgElements = [];
 
-    trackSections.forEach((section) => {
+    (trackSections || []).forEach((section) => {
       // Only render if all required fields are present and valid
       if (
-        section.line &&
+        section.selectedLine &&
         section.direction &&
         section.startAbs !== "" &&
         section.endAbs !== "" &&
@@ -1704,7 +1695,7 @@ const App = () => {
 
         // Find the corresponding track line
         const targetLine = trackLineYCoords.find(
-          (line) => line.direction === section.line
+          (line) => line.direction === section.selectedLine
         );
         if (!targetLine) return;
 
@@ -1854,6 +1845,7 @@ const App = () => {
     cautionBoards,
     lcGates,
     points,
+    trackSections,
   });
 
   const saveConfiguration = async () => {
@@ -1905,6 +1897,71 @@ const App = () => {
             trackPosition: t.trackPosition,
           }))
         );
+        setTrackSections(
+          loadedData.trackSections && loadedData.trackSections.length > 0
+            ? loadedData.trackSections.map((section, idx) => ({
+                ...section,
+                id: section.id !== undefined ? section.id : idx + 1,
+                startAbs:
+                  section.startAbs !== undefined
+                    ? section.startAbs.toString()
+                    : "",
+                endAbs:
+                  section.endAbs !== undefined ? section.endAbs.toString() : "",
+              }))
+            : [
+                // {
+                //   id: 1,
+                //   title: "Track Section 1",
+                //   line: "",
+                //   direction: "nominal",
+                //   startAbs: "",
+                //   endAbs: "",
+                // },
+              ]
+        );
+
+        // setTrackSections(
+        //   Array.isArray(loadedData.trackSections)
+        //     ? loadedData.trackSections.map((section, idx) => {
+        //         // Sanitize the 'selectedLine' value to ensure strict equality.
+        //         const rawLine = section.selectedLine || section.line || "";
+        //         let sanitizedLine = rawLine.trim(); // Remove leading/trailing whitespace
+
+        //         // Correct common casing issues to be safe.
+        //         if (sanitizedLine.toLowerCase() === "downmain") {
+        //           sanitizedLine = "downMain";
+        //         } else if (sanitizedLine.toLowerCase() === "upmain") {
+        //           sanitizedLine = "upMain";
+        //         }
+
+        //         return {
+        //           ...section,
+        //           id: section.id !== undefined ? section.id : idx + 1,
+        //           // Make ABS value mapping more robust to handle DB fields.
+        //           startAbs:
+        //             section.startAbs !== undefined
+        //               ? section.startAbs.toString()
+        //               : section.start_abs !== undefined
+        //               ? section.start_abs.toString()
+        //               : "",
+        //           endAbs:
+        //             section.endAbs !== undefined
+        //               ? section.endAbs.toString()
+        //               : section.end_abs !== undefined
+        //               ? section.end_abs.toString()
+        //               : "",
+        //           selectedLine: sanitizedLine, // Use the sanitized value.
+        //           direction: section.direction || "nominal",
+        //           trackSectionName:
+        //             section.trackSectionName ||
+        //             section.track_section_name ||
+        //             "",
+        //           title: section.title || `Track Section ${idx + 1}`,
+        //         };
+        //       })
+        //     : []
+        // );
         setGlobalTagConfigs(
           loadedData.globalTagConfigs.map((gt) => ({
             ...gt,
@@ -1981,6 +2038,7 @@ const App = () => {
             : 0;
         setNextTrackId(maxTrackId + 1);
 
+        //setTrackSections();
         const maxTagId =
           loadedData.globalTagConfigs.length > 0
             ? Math.max(...loadedData.globalTagConfigs.map((t) => t.id))
@@ -2630,7 +2688,7 @@ const App = () => {
             >
               Add New Track Section
             </button>
-            {trackSections.map((section) => (
+            {(trackSections || []).map((section) => (
               <TrackSectionFormCard
                 key={section.id}
                 trackSection={section}

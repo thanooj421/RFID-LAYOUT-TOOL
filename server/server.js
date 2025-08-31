@@ -99,6 +99,16 @@ db.exec(`
     point_b TEXT,
     abs REAL
   );
+
+  CREATE TABLE IF NOT EXISTS track_sections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT,
+    line TEXT,
+    direction TEXT,
+    start_abs REAL,
+    end_abs REAL,
+    track_section_name TEXT
+  );
 `);
 
 // --- API Endpoints ---
@@ -117,6 +127,7 @@ app.post("/api/save-config", (req, res) => {
     cautionBoards,
     lcGates,
     points,
+    trackSections,
   } = req.body;
 
   let success = true;
@@ -136,6 +147,7 @@ app.post("/api/save-config", (req, res) => {
       db.exec("DELETE FROM caution_boards");
       db.exec("DELETE FROM lc_gates");
       db.exec("DELETE FROM points");
+      db.exec("DELETE FROM track_sections");
 
       // Insert Station A
       const insertStationA = db.prepare(
@@ -258,6 +270,22 @@ app.post("/api/save-config", (req, res) => {
         );
       });
 
+      // Insert Track Sections
+      const insertTrackSection = db.prepare(`
+        INSERT INTO track_sections (title, line, direction, start_abs, end_abs, track_section_name)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+      trackSections.forEach((section) => {
+        insertTrackSection.run(
+          section.title,
+          section.selectedLine, // FIXED: was section.line, now section.selectedLine
+          section.direction,
+          parseFloat(section.startAbs),
+          parseFloat(section.endAbs),
+          section.trackSectionName
+        );
+      });
+
       // Insert Points
       const insertPoint = db.prepare(`
         INSERT INTO points (point_a, point_b, abs)
@@ -300,6 +328,7 @@ app.get("/api/load-config", (req, res) => {
     const cautionBoards = db.prepare("SELECT * FROM caution_boards").all();
     const lcGates = db.prepare("SELECT * FROM lc_gates").all();
     const points = db.prepare("SELECT * FROM points").all();
+    const trackSections = db.prepare("SELECT * FROM track_sections").all();
 
     res.json({
       success: true,
@@ -386,6 +415,17 @@ app.get("/api/load-config", (req, res) => {
             pointA: p.point_a !== null ? p.point_a.toString() : "",
             pointB: p.point_b !== null ? p.point_b.toString() : "",
             abs: p.abs !== null ? p.abs.toString() : "",
+          })) || [],
+        trackSections:
+          trackSections.map((section) => ({
+            id: section.id,
+            title: section.title,
+            selectedLine: section.line,
+            direction: section.direction,
+            startAbs:
+              section.start_abs !== null ? section.start_abs.toString() : "",
+            endAbs: section.end_abs !== null ? section.end_abs.toString() : "",
+            trackSectionName: section.track_section_name || "",
           })) || [],
       },
     });
