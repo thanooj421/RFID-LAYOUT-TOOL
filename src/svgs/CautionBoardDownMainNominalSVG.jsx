@@ -43,4 +43,4 @@ const CautionBoardDownMainNominalSVG = () => (
   </svg>
 );
 
-// export default CautionBoardDownMainNominalSVG;
+export default CautionBoardDownMainNominalSVG;

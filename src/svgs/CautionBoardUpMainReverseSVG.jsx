@@ -53,4 +53,4 @@ const CautionBoardUpMainReverseSVG = () => (
   </svg>
 );
 
-// export default CautionBoardUpMainReverseSVG;
+export default CautionBoardUpMainReverseSVG;

@@ -27,4 +27,4 @@ const SignalDownMainNominalSVG = () => (
   </svg>
 );
 
-// export default SignalDownMainNominalSVG;
+export default SignalDownMainNominalSVG;

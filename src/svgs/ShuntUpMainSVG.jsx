@@ -43,4 +43,4 @@ const ShuntUpMainSVG = () => (
   </svg>
 );
 
-// export default ShuntUpMainSVG;
+export default ShuntUpMainSVG;

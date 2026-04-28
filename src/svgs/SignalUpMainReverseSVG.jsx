@@ -71,4 +71,4 @@ const SignalUpMainReverseSVG = () => (
   </svg>
 );
 
-// export default SignalUpMainReverseSVG;
+export default SignalUpMainReverseSVG;

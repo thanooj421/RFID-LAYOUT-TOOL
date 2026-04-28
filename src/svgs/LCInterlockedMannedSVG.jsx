@@ -135,4 +135,4 @@ const LCInterlockedMannedSVG = () => (
   </svg>
 );
 
-// export default LCInterlockedMannedSVG;
+export default LCInterlockedMannedSVG;

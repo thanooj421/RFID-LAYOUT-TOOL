@@ -50,4 +50,4 @@ const ShuntDownMainSVG = () => (
   </svg>
 );
 
-// export default ShuntDownMainSVG;
+export default ShuntDownMainSVG;

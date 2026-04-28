@@ -23,4 +23,4 @@ const LCNonInterlockedUnmannedSVG = () => (
   </svg>
 );
 
-//export default LCNonInterlockedUnmannedSVG;
+export default LCNonInterlockedUnmannedSVG;
