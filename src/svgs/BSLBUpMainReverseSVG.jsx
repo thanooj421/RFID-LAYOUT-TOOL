@@ -51,4 +51,4 @@ const BSLBUpMainReverseSVG = () => (
   </svg>
 );
 
-export default BSLBUpMainReverseSVG;
+// export default BSLBUpMainReverseSVG;

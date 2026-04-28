@@ -21,6 +21,7 @@ import CautionBoardDownMainNominalSVG from "./svgs/CautionBoardDownMainNominalSV
 import CautionBoardUpMainReverseSVG from "./svgs/CautionBoardUpMainReverseSVG";
 import LCInterlockedMannedSVG from "./svgs/LCInterlockedMannedSVG";
 import LCNonInterlockedUnmannedSVG from "./svgs/LCNonInterlockedUnmannedSVG";
+import { buildSignalSvg } from "./components/SignalLayoutBuilder";
 
 import ReactDOMServer from "react-dom/server";
 const getSvgString = (Component) => {
@@ -28,6 +29,16 @@ const getSvgString = (Component) => {
 };
 
 const App = () => {
+  // Configuration to disable specific tabs
+  const disabledTabs = [
+    "shunts",
+    "bslb",
+    "cautionBoards",
+    "trackSections",
+    "points",
+    "lcGates",
+  ];
+
   const [activeAppTab, setActiveAppTab] = useState("stationDetails");
   const [stationA, setStationA] = useState({ name: "", id: "", abs: "" });
   const [stationB, setStationB] = useState({ name: "", id: "", abs: "" });
@@ -66,7 +77,7 @@ const App = () => {
 
   const handleTagRangeChange = (id, field, value) => {
     setTagRanges((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
+      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)),
     );
   };
 
@@ -98,9 +109,16 @@ const App = () => {
   const colors = ["red", "green", "blue", "yellow", "purple", "orange", "grey"];
   const tagTypes = [
     { value: "normal", label: "Normal Tag" },
+    { value: "lcGate", label: "LC Gate Tag" },
+    { value: "adjacent", label: "Adjacent Line Tag" },
+    { value: "adjustmentCumJunction", label: "Adjustment/Junction Tag" },
     { value: "signalFoot", label: "Signal Tag" },
     { value: "exit", label: "Exit Tag" },
-    { value: "adjacent", label: "Adjacent Line Tag" },
+  ];
+
+  const versionTypes = [
+    { value: "v1", label: "KAVACH Spec 3.2" },
+    { value: "v2", label: "KAVACH Spec 4.0" },
   ];
 
   const [shunts, setShunts] = useState([
@@ -164,13 +182,16 @@ const App = () => {
 
   const handleUpdatePoint = (id, field, value) => {
     setPoints((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p))
+      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)),
     );
   };
 
   const [trackSections, setTrackSections] = useState([]);
 
   const [nextTrackSectionId, setNextTrackSectionId] = useState(2);
+
+  const [configFiles, setConfigFiles] = useState([]);
+  const [showLoadModal, setShowLoadModal] = useState(false);
 
   const PAGE_WIDTH_PX = 46.81 * 96;
   const PAGE_HEIGHT_PX = 33.11 * 96;
@@ -184,6 +205,7 @@ const App = () => {
   const BLOCK_HEIGHT_PER_DIRECTION = 140;
   const OUTER_TRACK_GAP = 180;
   const MIN_FOCUS_VISUAL_WIDTH = 60;
+  const TAG_SCALE = 0.9; // scale factor to enlarge/reduce tags
 
   const handleStationAChange = (field, value) => {
     if (field === "id" && !/^\d*$/.test(value)) return;
@@ -229,7 +251,7 @@ const App = () => {
     if (!isTrackLengthDefined || derivedTrackLengthMeters === 0) {
       if (value !== "" && isNumberValid) {
         alert(
-          "Please enter valid, different numeric Station A and Station B ABS values to define the track length first."
+          "Please enter valid, different numeric Station A and Station B ABS values to define the track length first.",
         );
       }
       return false;
@@ -241,10 +263,10 @@ const App = () => {
           if (parsedValue < minOverallAbsKm || parsedValue > maxOverallAbsKm) {
             alert(
               `"Focus from" distance (${parsedValue.toFixed(
-                3
+                3,
               )} km) must be within the overall track range [${minOverallAbsKm.toFixed(
-                3
-              )} km, ${maxOverallAbsKm.toFixed(3)} km].`
+                3,
+              )} km, ${maxOverallAbsKm.toFixed(3)} km].`,
             );
             return false;
           }
@@ -257,7 +279,7 @@ const App = () => {
             focusFromAbsKm > maxOverallAbsKm
           ) {
             alert(
-              'Please enter a valid "Focus from" distance first (within track bounds).'
+              'Please enter a valid "Focus from" distance first (within track bounds).',
             );
             return false;
           }
@@ -266,10 +288,10 @@ const App = () => {
             if (parsedValue <= focusFromAbsKm) {
               alert(
                 `Track ${track.id}: "Focus to" (${parsedValue.toFixed(
-                  3
+                  3,
                 )} km) must be greater than "Focus from" (${focusFromAbsKm.toFixed(
-                  3
-                )} km) when Station B ABS is greater than Station A ABS.`
+                  3,
+                )} km) when Station B ABS is greater than Station A ABS.`,
               );
               return false;
             }
@@ -277,10 +299,10 @@ const App = () => {
             if (parsedValue >= focusFromAbsKm) {
               alert(
                 `Track ${track.id}: "Focus to" (${parsedValue.toFixed(
-                  3
+                  3,
                 )} km) must be less than "Focus from" (${focusFromAbsKm.toFixed(
-                  3
-                )} km) when Station A ABS is greater than Station B ABS.`
+                  3,
+                )} km) when Station A ABS is greater than Station B ABS.`,
               );
               return false;
             }
@@ -289,10 +311,10 @@ const App = () => {
           if (parsedValue < minOverallAbsKm || parsedValue > maxOverallAbsKm) {
             alert(
               `Track ${track.id}: "Focus to" distance (${parsedValue.toFixed(
-                3
+                3,
               )} km) must be within the overall track range [${minOverallAbsKm.toFixed(
-                3
-              )} km, ${maxOverallAbsKm.toFixed(3)} km].`
+                3,
+              )} km, ${maxOverallAbsKm.toFixed(3)} km].`,
             );
             return false;
           }
@@ -313,11 +335,11 @@ const App = () => {
         range.start !== "" &&
         range.end !== "" &&
         tagIdNumber >= parseInt(range.start) &&
-        tagIdNumber <= parseInt(range.end)
+        tagIdNumber <= parseInt(range.end),
     );
     if (!inRange) {
       alert(
-        `Tag ID ${tagId} is not within any of the defined tag ranges. Please enter the Tag ID within the mentioned range`
+        `Tag ID ${tagId} is not within any of the defined tag ranges. Please enter the Tag ID within the mentioned range`,
       );
       return false;
     }
@@ -327,7 +349,7 @@ const App = () => {
       .filter(Boolean);
     if (allTagIds.filter((existingId) => existingId === tagId).length > 0) {
       alert(
-        `The tag ${tagId} has already been used. Please Enter the another Tag ID within the mentioned range`
+        `The tag ${tagId} has already been used. Please Enter the another Tag ID within the mentioned range`,
       );
       return false;
     }
@@ -357,7 +379,7 @@ const App = () => {
             }
           } else if (
             ["tagStartAbs", "tagEndAbs", "distanceBetweenTagsMeters"].includes(
-              field
+              field,
             )
           ) {
             if (value === "" || /^-?\d*\.?\d*$/.test(value)) {
@@ -369,7 +391,7 @@ const App = () => {
           return updatedConfig;
         }
         return config;
-      })
+      }),
     );
   };
 
@@ -378,11 +400,65 @@ const App = () => {
       if (!isTagValid(value, id)) {
         setGlobalTagConfigs((prevConfigs) =>
           prevConfigs.map((config) =>
-            config.id === id ? { ...config, tagId: "" } : config
-          )
+            config.id === id ? { ...config, tagId: "" } : config,
+          ),
         );
       }
     }
+  };
+
+  // Helper function to extract numeric part from tag ID (e.g., "S001" -> 1)
+  const parseTagId = (tagIdStr) => {
+    const match = String(tagIdStr).match(/\d+/);
+    return match ? parseInt(match[0], 10) : null;
+  };
+
+  // Helper function to get all available tag IDs from ranges
+  const getAvailableTagIds = () => {
+    const usedIds = new Set(
+      globalTagConfigs
+        .map((config) => config.tagId)
+        .filter((id) => id !== "" && id !== null),
+    );
+
+    const availableIds = [];
+
+    tagRanges.forEach((range) => {
+      if (range.start && range.end) {
+        const startNum = parseTagId(range.start);
+        const endNum = parseTagId(range.end);
+
+        if (startNum !== null && endNum !== null) {
+          const min = Math.min(startNum, endNum);
+          const max = Math.max(startNum, endNum);
+          const prefix = String(range.start).replace(/\d+/, "");
+          const padLength = String(range.start).replace(/\D/g, "").length;
+
+          for (let i = min; i <= max; i++) {
+            const numStr = String(i).padStart(padLength, "0");
+            const tagId = prefix + numStr;
+
+            if (!usedIds.has(tagId)) {
+              availableIds.push(tagId);
+            }
+          }
+        }
+      }
+    });
+
+    return availableIds;
+  };
+
+  // Helper function to get first available tag ID
+  const getFirstAvailableTagId = () => {
+    const available = getAvailableTagIds();
+    return available.length > 0 ? available[0] : "";
+  };
+
+  // Helper function to get first N available tag IDs
+  const getFirstNAvailableTagIds = (count = 1) => {
+    const available = getAvailableTagIds();
+    return available.slice(0, count);
   };
 
   const validateGlobalTagField = (id, field, value) => {
@@ -395,7 +471,7 @@ const App = () => {
     if (!isTrackLengthDefined || derivedTrackLengthMeters === 0) {
       if (value !== "" && isNumberValid) {
         alert(
-          "Please enter valid, different numeric Station A and Station B ABS values to define the track length first."
+          "Please enter valid, different numeric Station A and Station B ABS values to define the track length first.",
         );
       }
       return false;
@@ -415,10 +491,10 @@ const App = () => {
           if (parsedValue < minOverallAbsKm || parsedValue > maxOverallAbsKm) {
             alert(
               `Tag start ABS (${parsedValue.toFixed(
-                3
+                3,
               )} km) must be within the overall track range [${minOverallAbsKm.toFixed(
-                3
-              )} km, ${maxOverallAbsKm.toFixed(3)} km].`
+                3,
+              )} km, ${maxOverallAbsKm.toFixed(3)} km].`,
             );
             return false;
           }
@@ -433,7 +509,7 @@ const App = () => {
             startAbs > maxOverallAbsKm
           ) {
             alert(
-              "Please enter a valid Tag start ABS first, within track bounds."
+              "Please enter a valid Tag start ABS first, within track bounds.",
             );
             return false;
           }
@@ -442,10 +518,10 @@ const App = () => {
             if (parsedValue <= startAbs) {
               alert(
                 `Tag end ABS (${parsedValue.toFixed(
-                  3
+                  3,
                 )} km) must be greater than Tag start ABS (${startAbs.toFixed(
-                  3
-                )} km) for Nominal (Increasing ABS Order) arrangement.`
+                  3,
+                )} km) for Nominal (Increasing ABS Order) arrangement.`,
               );
               return false;
             }
@@ -453,10 +529,10 @@ const App = () => {
             if (parsedValue >= startAbs) {
               alert(
                 `Tag end ABS (${parsedValue.toFixed(
-                  3
+                  3,
                 )} km) must be less than Tag start ABS (${startAbs.toFixed(
-                  3
-                )} km) for Reverse (Decreasing ABS Order) arrangement.`
+                  3,
+                )} km) for Reverse (Decreasing ABS Order) arrangement.`,
               );
               return false;
             }
@@ -465,10 +541,10 @@ const App = () => {
           if (parsedValue < minOverallAbsKm || parsedValue > maxOverallAbsKm) {
             alert(
               `Tag end ABS (${parsedValue.toFixed(
-                3
+                3,
               )} km) must be within the overall track range [${minOverallAbsKm.toFixed(
-                3
-              )} km, ${maxOverallAbsKm.toFixed(3)} km].`
+                3,
+              )} km, ${maxOverallAbsKm.toFixed(3)} km].`,
             );
             return false;
           }
@@ -489,10 +565,13 @@ const App = () => {
   };
 
   const handleAddSignal = () => {
+    const currentSignalId = nextSignalId;
+    const [sTagId, nTagId] = getFirstNAvailableTagIds(2);
+
     setSignals((prevSignals) => [
       ...prevSignals,
       {
-        id: nextSignalId,
+        id: currentSignalId,
         signalName: "",
         signalAbs: "",
         signalType: "RYGY",
@@ -502,19 +581,97 @@ const App = () => {
       },
     ]);
     setNextSignalId((prevId) => prevId + 1);
+
+    // Automatically add S-tag (signal foot tag) and N-tag (normal tag 200m before)
+    const currentTagConfigId = nextTagConfigId;
+    setGlobalTagConfigs((prevConfigs) => [
+      ...prevConfigs,
+      // S-tag (Signal Foot Tag)
+      {
+        id: currentTagConfigId,
+        selectedLine: "downMain",
+        direction: "nominal",
+        tagType: "signalFoot",
+        numTags: 1,
+        tagStartAbs: "",
+        tagEndAbs: "",
+        distanceBetweenTagsMeters: "",
+        tagId: sTagId,
+        signalId: currentSignalId,
+      },
+      // N-tag (Normal Tag 200m before signal)
+      {
+        id: currentTagConfigId + 1,
+        selectedLine: "downMain",
+        direction: "nominal",
+        tagType: "normal",
+        numTags: 1,
+        tagStartAbs: "",
+        tagEndAbs: "",
+        distanceBetweenTagsMeters: "",
+        tagId: nTagId,
+        nTagForSignalId: currentSignalId,
+      },
+    ]);
+    setNextTagConfigId((prevId) => prevId + 2);
   };
 
   const handleUpdateSignal = (id, field, value) => {
     setSignals((prevSignals) =>
       prevSignals.map((signal) =>
-        signal.id === id ? { ...signal, [field]: value } : signal
-      )
+        signal.id === id ? { ...signal, [field]: value } : signal,
+      ),
     );
+
+    // Sync corresponding signal tags when signal is updated
+    if (field === "signalAbs" || field === "selectedLine") {
+      setGlobalTagConfigs((prevConfigs) =>
+        prevConfigs.map((config) => {
+          // Update S-tag (signal foot tag)
+          if (config.signalId === id) {
+            return {
+              ...config,
+              ...(field === "signalAbs" && { tagStartAbs: value }),
+              ...(field === "selectedLine" && { selectedLine: value }),
+            };
+          }
+          // Update N-tag (normal tag 200m before signal)
+          if (config.nTagForSignalId === id) {
+            if (field === "signalAbs" && value !== "") {
+              // N-tag is 0.2 km (200 meters) before S-tag
+              const nTagAbs = (parseFloat(value) - 0.2).toString();
+              return {
+                ...config,
+                tagStartAbs: nTagAbs,
+              };
+            } else if (field === "signalAbs" && value === "") {
+              return {
+                ...config,
+                tagStartAbs: "",
+              };
+            } else if (field === "selectedLine") {
+              return {
+                ...config,
+                selectedLine: value,
+              };
+            }
+          }
+          return config;
+        }),
+      );
+    }
   };
 
   const handleRemoveSignal = (id) => {
     setSignals((prevSignals) =>
-      prevSignals.filter((signal) => signal.id !== id)
+      prevSignals.filter((signal) => signal.id !== id),
+    );
+
+    // Remove both S-tag and N-tag when signal is deleted
+    setGlobalTagConfigs((prevConfigs) =>
+      prevConfigs.filter(
+        (config) => config.signalId !== id && config.nTagForSignalId !== id,
+      ),
     );
   };
 
@@ -528,7 +685,7 @@ const App = () => {
     if (!isTrackLengthDefined || derivedTrackLengthMeters === 0) {
       if (value !== "" && isNumberValid) {
         alert(
-          "Please enter valid, different numeric Station A and Station B ABS values to define the track length first."
+          "Please enter valid, different numeric Station A and Station B ABS values to define the track length first.",
         );
       }
       return false;
@@ -540,10 +697,10 @@ const App = () => {
           if (parsedValue < minOverallAbsKm || parsedValue > maxOverallAbsKm) {
             alert(
               `Signal ABS (${parsedValue.toFixed(
-                3
+                3,
               )} km) must be within the overall track range [${minOverallAbsKm.toFixed(
-                3
-              )} km, ${maxOverallAbsKm.toFixed(3)} km].`
+                3,
+              )} km, ${maxOverallAbsKm.toFixed(3)} km].`,
             );
             return false;
           }
@@ -575,8 +732,8 @@ const App = () => {
   const handleUpdateTrack = (id, field, value) => {
     setTracks((prevTracks) =>
       prevTracks.map((track) =>
-        track.id === id ? { ...track, [field]: value } : track
-      )
+        track.id === id ? { ...track, [field]: value } : track,
+      ),
     );
   };
 
@@ -604,7 +761,7 @@ const App = () => {
 
   const handleRemoveTagConfig = (id) => {
     setGlobalTagConfigs((prevConfigs) =>
-      prevConfigs.filter((config) => config.id !== id)
+      prevConfigs.filter((config) => config.id !== id),
     );
   };
 
@@ -624,8 +781,8 @@ const App = () => {
   const handleUpdateShunt = (id, field, value) => {
     setShunts((prevShunts) =>
       prevShunts.map((shunt) =>
-        shunt.id === id ? { ...shunt, [field]: value } : shunt
-      )
+        shunt.id === id ? { ...shunt, [field]: value } : shunt,
+      ),
     );
   };
 
@@ -647,7 +804,7 @@ const App = () => {
   };
   const handleUpdateBslb = (id, field, value) => {
     setBslbs((prev) =>
-      prev.map((bslb) => (bslb.id === id ? { ...bslb, [field]: value } : bslb))
+      prev.map((bslb) => (bslb.id === id ? { ...bslb, [field]: value } : bslb)),
     );
   };
   const handleRemoveBslb = (id) => {
@@ -668,7 +825,7 @@ const App = () => {
   };
   const handleUpdateCautionBoard = (id, field, value) => {
     setCautionBoards((prev) =>
-      prev.map((cb) => (cb.id === id ? { ...cb, [field]: value } : cb))
+      prev.map((cb) => (cb.id === id ? { ...cb, [field]: value } : cb)),
     );
   };
   const handleRemoveCautionBoard = (id) => {
@@ -691,7 +848,7 @@ const App = () => {
   };
   const handleUpdateLcGate = (id, field, value) => {
     setLcGates((prev) =>
-      prev.map((lc) => (lc.id === id ? { ...lc, [field]: value } : lc))
+      prev.map((lc) => (lc.id === id ? { ...lc, [field]: value } : lc)),
     );
   };
   const handleRemoveLcGate = (id) => {
@@ -709,8 +866,8 @@ const App = () => {
         alert(
           `Shunt Abs (${value}) must be within the overall track range [${Math.min(
             stationAAbsKm,
-            stationBAbsKm
-          )} km, ${Math.max(stationAAbsKm, stationBAbsKm)} km].`
+            stationBAbsKm,
+          )} km, ${Math.max(stationAAbsKm, stationBAbsKm)} km].`,
         );
         return false;
       }
@@ -737,8 +894,8 @@ const App = () => {
   const handleUpdateTrackSection = (id, field, value) => {
     setTrackSections((prev) =>
       prev.map((section) =>
-        section.id === id ? { ...section, [field]: value } : section
-      )
+        section.id === id ? { ...section, [field]: value } : section,
+      ),
     );
   };
 
@@ -751,7 +908,7 @@ const App = () => {
       { value: "downMain", label: "Down Main" },
       { value: "upMain", label: "Up Main" },
     ],
-    []
+    [],
   );
 
   const availableLineOptions = useMemo(() => {
@@ -782,7 +939,7 @@ const App = () => {
   const generateSvgContent = () => {
     if (!isTrackLengthDefined || derivedTrackLengthMeters === 0) {
       alert(
-        "Please enter valid and different numeric Station A and Station B ABS values to define the track length."
+        "Please enter valid and different numeric Station A and Station B ABS values to define the track length.",
       );
       return "";
     }
@@ -813,10 +970,10 @@ const App = () => {
           if (focusFromAbsKm >= focusToAbsKm) {
             alert(
               `Track ${track.id}: "Focus to" (${focusToAbsKm.toFixed(
-                3
+                3,
               )} km) must be greater than "Focus from" (${focusFromAbsKm.toFixed(
-                3
-              )} km) as Station B ABS is greater than Station A ABS.`
+                3,
+              )} km) as Station B ABS is greater than Station A ABS.`,
             );
             return "";
           }
@@ -824,10 +981,10 @@ const App = () => {
           if (focusFromAbsKm <= focusToAbsKm) {
             alert(
               `Track ${track.id}: "Focus to" (${focusToAbsKm.toFixed(
-                3
+                3,
               )} km) must be less than "Focus from" (${focusFromAbsKm.toFixed(
-                3
-              )} km) as Station A ABS is greater than Station B ABS.`
+                3,
+              )} km) as Station A ABS is greater than Station B ABS.`,
             );
             return "";
           }
@@ -840,7 +997,7 @@ const App = () => {
 
       if (numTagsVal < 0) {
         alert(
-          `Tag configuration ${tagConfig.id}: Number of tags cannot be negative.`
+          `Tag configuration ${tagConfig.id}: Number of tags cannot be negative.`,
         );
         return "";
       }
@@ -851,13 +1008,13 @@ const App = () => {
             !validateGlobalTagField(
               tagConfig.id,
               "tagStartAbs",
-              tagConfig.tagStartAbs
+              tagConfig.tagStartAbs,
             )
           )
             return "";
         } else {
           alert(
-            `Tag configuration ${tagConfig.id}: "Tag start ABS" is required to draw tags.`
+            `Tag configuration ${tagConfig.id}: "Tag start ABS" is required to draw tags.`,
           );
           return "";
         }
@@ -868,13 +1025,13 @@ const App = () => {
               !validateGlobalTagField(
                 tagConfig.id,
                 "tagEndAbs",
-                tagConfig.tagEndAbs
+                tagConfig.tagEndAbs,
               )
             )
               return "";
           } else {
             alert(
-              `Tag configuration ${tagConfig.id}: "Tag end ABS" is required for multiple tags.`
+              `Tag configuration ${tagConfig.id}: "Tag end ABS" is required for multiple tags.`,
             );
             return "";
           }
@@ -884,13 +1041,13 @@ const App = () => {
               !validateGlobalTagField(
                 tagConfig.id,
                 "distanceBetweenTagsMeters",
-                tagConfig.distanceBetweenTagsMeters
+                tagConfig.distanceBetweenTagsMeters,
               )
             )
               return "";
           } else {
             alert(
-              `Tag configuration ${tagConfig.id}: "Distance between tags" is required for multiple tags.`
+              `Tag configuration ${tagConfig.id}: "Distance between tags" is required for multiple tags.`,
             );
             return "";
           }
@@ -898,7 +1055,7 @@ const App = () => {
           const globalTagStartAbsKm = parseFloat(tagConfig.tagStartAbs);
           const globalTagEndAbsKm = parseFloat(tagConfig.tagEndAbs);
           const globalDistanceBetweenTagsMeters = parseFloat(
-            tagConfig.distanceBetweenTagsMeters
+            tagConfig.distanceBetweenTagsMeters,
           );
 
           if (
@@ -908,7 +1065,7 @@ const App = () => {
               globalTagStartAbsKm >= globalTagEndAbsKm)
           ) {
             alert(
-              `Tag configuration ${tagConfig.id}: For Nominal (Increasing ABS Order) arrangement, "Tag end ABS" must be greater than "Tag start ABS".`
+              `Tag configuration ${tagConfig.id}: For Nominal (Increasing ABS Order) arrangement, "Tag end ABS" must be greater than "Tag start ABS".`,
             );
             return "";
           }
@@ -919,7 +1076,7 @@ const App = () => {
               globalTagStartAbsKm <= globalTagEndAbsKm)
           ) {
             alert(
-              `Tag configuration ${tagConfig.id}: For Reverse (Decreasing ABS Order) arrangement, "Tag end ABS" must be less than "Tag start ABS".`
+              `Tag configuration ${tagConfig.id}: For Reverse (Decreasing ABS Order) arrangement, "Tag end ABS" must be less than "Tag start ABS".`,
             );
             return "";
           }
@@ -928,7 +1085,7 @@ const App = () => {
             globalDistanceBetweenTagsMeters <= 0
           ) {
             alert(
-              `Tag configuration ${tagConfig.id}: Distance between tags must be a positive number if more than one tag is used.`
+              `Tag configuration ${tagConfig.id}: Distance between tags must be a positive number if more than one tag is used.`,
             );
             return "";
           }
@@ -951,7 +1108,7 @@ const App = () => {
     let currentYOffset = VIEWBOX_PADDING_Y;
 
     const sortedTracks = [...tracks].sort(
-      (a, b) => b.trackPosition - a.trackPosition
+      (a, b) => b.trackPosition - a.trackPosition,
     );
 
     const trackLineYCoords = [];
@@ -987,6 +1144,7 @@ const App = () => {
 
         if (track.trackVisualTraversalDirection === "nominal") {
           trackStartX = VIEWBOX_PADDING_X;
+
           trackEndX = VIEWBOX_PADDING_X + INTERNAL_SVG_TRACK_WIDTH;
           absDirectionText = isAbsDirectionNominal
             ? "Increasing ABS (L to R)"
@@ -1022,21 +1180,21 @@ const App = () => {
                     VIEWBOX_PADDING_X) /
                   2
                 }" y="${
-          baseYOffsetInGroup + 20
-        }" font-family="Arial" font-size="28" fill="#e309ca" text-anchor="middle" font-weight="bold">
+                  baseYOffsetInGroup + 20
+                }" font-family="Arial" font-size="28" fill="#e309ca" text-anchor="middle" font-weight="bold">
                      ${`N-${track.tinId}`}
                 </text>
             `;
 
         trackSvg += `
                 <text x="${VIEWBOX_PADDING_X}" y="${
-          currentLineY1 - 10
-        }" font-family="Arial" font-size="24" fill="#333" text-anchor="middle">
+                  currentLineY1 - 10
+                }" font-family="Arial" font-size="24" fill="#333" text-anchor="middle">
                     ${stationAAbsKm.toFixed(3)}km (St A)
                 </text>
                 <text x="${VIEWBOX_PADDING_X + INTERNAL_SVG_TRACK_WIDTH}" y="${
-          currentLineY1 - 10
-        }" font-family="Arial" font-size="24" fill="#333" text-anchor="middle">
+                  currentLineY1 - 10
+                }" font-family="Arial" font-size="24" fill="#333" text-anchor="middle">
                     ${stationBAbsKm.toFixed(3)}km (St B)
                 </text>
             `;
@@ -1084,7 +1242,7 @@ const App = () => {
                     <text x="${focusTextX}" y="${currentTrackCenterY + 10}"
                             text-anchor="middle" font-family="Arial" font-size="24" fill="white" stroke="black" stroke-width="0.8">
                         ${parseFloat(track.focusFrom).toFixed(
-                          3
+                          3,
                         )}km - ${parseFloat(track.focusTo).toFixed(3)}km
                     </text>
                 `;
@@ -1099,13 +1257,13 @@ const App = () => {
       if (track.trackDirection === "downMain") {
         totalSvgElements += drawSingleDirectionTrack(
           "downMain",
-          yOffsetForDownMain
+          yOffsetForDownMain,
         );
         currentTrackBlockHeight += BLOCK_HEIGHT_PER_DIRECTION;
       } else if (track.trackDirection === "upMain") {
         totalSvgElements += drawSingleDirectionTrack(
           "upMain",
-          yOffsetForUpMain
+          yOffsetForUpMain,
         );
         currentTrackBlockHeight += BLOCK_HEIGHT_PER_DIRECTION;
       }
@@ -1129,12 +1287,17 @@ const App = () => {
         !isNaN(abs) &&
         trackLineYCoords.length >= 2
       ) {
-        const getVisualX = (absKm) =>
-          VIEWBOX_PADDING_X +
-          (((absKm - minOverallAbsKm) * 1000) / derivedTrackLengthMeters) *
-            INTERNAL_SVG_TRACK_WIDTH;
+        const getVisualX = (absKm) => {
+          const line = trackLineYCoords[0];
+          return (
+            VIEWBOX_PADDING_X +
+            (((absKm - line.absMappingMin) * 1000) /
+              line.physicalLengthMeters) *
+              INTERNAL_SVG_TRACK_WIDTH
+          );
+        };
 
-        const x = getVisualX(abs);
+        const x = Math.round(getVisualX(abs));
 
         const y1 = trackLineYCoords[0].centerY;
         const y2 = trackLineYCoords[1].centerY;
@@ -1201,7 +1364,7 @@ const App = () => {
         const globalTagStartAbsKm = parseFloat(tagConfig.tagStartAbs);
         const globalTagEndAbsKm = parseFloat(tagConfig.tagEndAbs);
         const globalDistanceBetweenTagsMeters = parseFloat(
-          tagConfig.distanceBetweenTagsMeters
+          tagConfig.distanceBetweenTagsMeters,
         );
 
         let tagFillColor = "none";
@@ -1209,30 +1372,33 @@ const App = () => {
         let tagText = "N";
 
         if (tagConfig.tagType === "signalFoot") {
-          tagFillColor = "blue";
+          tagFillColor = "none";
           tagText = "S";
         } else if (tagConfig.tagType === "exit") {
-          tagFillColor = "red";
+          tagFillColor = "none";
           tagText = "X";
         } else if (tagConfig.tagType === "adjacent") {
-          tagFillColor = "orange";
+          tagFillColor = "none";
           tagText = "L";
         }
 
         trackLineYCoords.forEach((line) => {
           if (line.direction === tagConfig.selectedLine) {
             const currentTrackCenterY = line.centerY;
-            const tagWidth = 50;
-            const tagHeight = 70;
-            const tagY = currentTrackCenterY - tagHeight / 2;
+            const TAG_VERTICAL_OFFSET = 0;
+            const TAG_HORIZONTAL_OFFSET = -100; // adjust left/right: negative for left, positive for right
+            const tagWidth = 70 * TAG_SCALE;
+            const tagHeight = 60 * TAG_SCALE;
+            const tagY =
+              currentTrackCenterY - tagHeight / 2 + TAG_VERTICAL_OFFSET;
 
             const getTagVisualX = (absKm) => {
-              if (derivedTrackLengthMeters === 0) return VIEWBOX_PADDING_X;
+              if (line.physicalLengthMeters === 0) return VIEWBOX_PADDING_X;
               const relativeDistanceMetersFromMin =
-                (absKm - minOverallAbsKm) * 1000;
+                (absKm - line.absMappingMin) * 1000;
               return (
                 VIEWBOX_PADDING_X +
-                (relativeDistanceMetersFromMin / derivedTrackLengthMeters) *
+                (relativeDistanceMetersFromMin / line.physicalLengthMeters) *
                   INTERNAL_SVG_TRACK_WIDTH
               );
             };
@@ -1272,48 +1438,51 @@ const App = () => {
                 break;
               }
 
-              const tagX = getTagVisualX(tagCurrentAbsKm);
-
+              const centerX =
+                Math.round(getTagVisualX(tagCurrentAbsKm)) +
+                TAG_HORIZONTAL_OFFSET;
+              const halfW = tagWidth / 2;
+              const leftX = centerX - halfW;
               let trianglePoints;
-              let textX;
-              const textY = currentTrackCenterY + 5;
+              const textX = centerX; // center text on the tag so it matches signal anchor
+              const textY =
+                currentTrackCenterY + 5 * TAG_SCALE + TAG_VERTICAL_OFFSET;
 
               if (tagConfig.direction === "nominal") {
-                trianglePoints = `${tagX},${tagY} ${tagX + tagWidth},${
-                  tagY + tagHeight / 2
-                } ${tagX},${tagY + tagHeight}`;
-                textX = tagX + tagWidth / 3 + 2;
+                trianglePoints = `${leftX},${tagY} ${
+                  centerX + halfW
+                },${tagY + tagHeight / 2} ${leftX},${tagY + tagHeight}`;
               } else {
-                trianglePoints = `${tagX},${tagY} ${tagX - tagWidth},${
+                trianglePoints = `${centerX + halfW},${tagY} ${leftX},${
                   tagY + tagHeight / 2
-                } ${tagX},${tagY + tagHeight}`;
-                textX = tagX - tagWidth / 3 - 2;
+                } ${centerX + halfW},${tagY + tagHeight}`;
               }
               const tagIdText = tagConfig.tagId ? `R-${tagConfig.tagId}` : "";
               const tagIdBoxWidth =
-                48 + (tagIdText.length > 4 ? (tagIdText.length - 4) * 8 : 0);
-              const tagIdBoxHeight = 22;
+                (48 + (tagIdText.length > 4 ? (tagIdText.length - 4) * 8 : 0)) *
+                TAG_SCALE;
+              const tagIdBoxHeight = 22 * TAG_SCALE;
               const tagIdBoxX = textX - tagIdBoxWidth / 2;
-              const tagIdBoxY = textY + 35;
+              const tagIdBoxY = textY + 35 * TAG_SCALE;
 
               globalTagSvgElements.push(`
-  <polygon points="${trianglePoints}" fill="${tagFillColor}" stroke="black" stroke-width="2" />
-  <text x="${textX}" y="${textY}" font-family="Arial" font-size="20" fill="${tagTextColor}" text-anchor="middle" alignment-baseline="middle">${tagText}</text>
+  <polygon points="${trianglePoints}" fill="${tagFillColor}" stroke="black" stroke-width="${2 * TAG_SCALE}" />
+  <text x="${textX}" y="${textY}" font-family="Arial" font-size="${20 * TAG_SCALE}" fill="${tagTextColor}" text-anchor="middle" alignment-baseline="middle">${tagText}</text>
   <rect
     x="${tagIdBoxX}"
     y="${tagIdBoxY}"
-    width="${tagIdBoxWidth - 5}"
-    height="${tagIdBoxHeight - 5}"
-    rx="3"
+    width="${tagIdBoxWidth - 5 * TAG_SCALE}"
+    height="${tagIdBoxHeight - 5 * TAG_SCALE}"
+    rx="${3 * TAG_SCALE}"
     fill="#ffffff"
     stroke="#1000f7"
-    stroke-width="1"
+    stroke-width="${1 * TAG_SCALE}"
 
   />
   <text
     x="${textX}"
-     y="${tagIdBoxY + (tagIdBoxHeight - 5) / 2 + tagIdBoxY / 100}"
-    font-size="10"
+     y="${tagIdBoxY + (tagIdBoxHeight - 5 * TAG_SCALE) / 2 + tagIdBoxY / 100}"
+    font-size="${10 * TAG_SCALE}"
     fill="#1000f7"
     font-weight="normal"
     text-anchor="middle"
@@ -1325,9 +1494,9 @@ const App = () => {
   </text>
   <text
     x="${textX}"
-    y="${tagIdBoxY + tagIdBoxHeight + 10}"
+    y="${tagIdBoxY + tagIdBoxHeight + 10 * TAG_SCALE}"
     font-family="Arial"
-    font-size="15"
+    font-size="${15 * TAG_SCALE}"
     fill="#333"
     text-anchor="middle"
     alignment-baseline="middle"
@@ -1349,80 +1518,14 @@ const App = () => {
     });
 
     const signalSvgElements = [];
-
     signals.forEach((signal) => {
-      const signalAbsKm = parseFloat(signal.signalAbs);
-      if (isNaN(signalAbsKm)) return;
-
-      const targetLine = trackLineYCoords.find(
-        (line) => line.direction === signal.selectedLine
-      );
-
-      if (targetLine) {
-        const getSignalVisualX = (absKm) => {
-          if (targetLine.physicalLengthMeters === 0) return VIEWBOX_PADDING_X;
-          const relativeDistanceMetersFromMin =
-            (absKm - targetLine.absMappingMin) * 1000;
-          return (
-            VIEWBOX_PADDING_X +
-            (relativeDistanceMetersFromMin / targetLine.physicalLengthMeters) *
-              INTERNAL_SVG_TRACK_WIDTH
-          );
-        };
-
-        const signalVisualX = getSignalVisualX(signalAbsKm);
-
-        let SignalSvgComponent = null;
-        let transformTranslateX = 0;
-        let transformTranslateY = 0;
-        let signalWidth = 267;
-        let signalHeight = 147;
-        const signalScale = 0.5;
-
-        const scaledSignalWidth = signalWidth * signalScale;
-        const scaledSignalHeight = signalHeight * signalScale;
-
-        let arrowTipXOffsetOriginal = 0;
-
-        if (
-          signal.selectedLine === "downMain" &&
-          signal.direction === "nominal"
-        ) {
-          SignalSvgComponent = SignalDownMainNominalSVG;
-          arrowTipXOffsetOriginal = 266.005;
-          const rightOffset = 128;
-          transformTranslateX =
-            signalVisualX - arrowTipXOffsetOriginal * signalScale + rightOffset;
-          transformTranslateY = targetLine.y1 - scaledSignalHeight;
-        } else if (
-          signal.selectedLine === "upMain" &&
-          signal.direction === "reverse"
-        ) {
-          SignalSvgComponent = SignalUpMainReverseSVG;
-          arrowTipXOffsetOriginal = 1;
-          const leftOffset = 4;
-
-          transformTranslateX =
-            signalVisualX - arrowTipXOffsetOriginal * signalScale - leftOffset;
-          transformTranslateY = targetLine.y2 - scaledSignalHeight / 40;
-        } else {
-          return;
-        }
-
-        signalSvgElements.push(`
-          <g transform="translate(${transformTranslateX}, ${transformTranslateY}) scale(${signalScale})">
-            ${getSvgString(SignalSvgComponent)}
-          </g>
-          <text x="${signalVisualX}" y="${
-          signal.selectedLine === "downMain" && signal.direction === "nominal"
-            ? targetLine.y1 - scaledSignalHeight - 10
-            : targetLine.y1 + scaledSignalHeight + 20
-        }" font-family="Arial" font-size="20" fill="#333" text-anchor="middle">
-              ${signal.signalName} (${signal.signalAbs}km)
-          </text>
-        `);
-      }
+      const markup = buildSignalSvg(signal, trackLineYCoords, {
+        VIEWBOX_PADDING_X,
+        INTERNAL_SVG_TRACK_WIDTH,
+      });
+      if (markup) signalSvgElements.push(markup);
     });
+
     const shuntSvgElements = [];
 
     shunts.forEach((shunt) => {
@@ -1430,7 +1533,7 @@ const App = () => {
       if (isNaN(shuntAbsKm)) return;
 
       const targetLine = trackLineYCoords.find(
-        (line) => line.direction === shunt.selectedLine
+        (line) => line.direction === shunt.selectedLine,
       );
       if (!targetLine) return;
 
@@ -1445,7 +1548,7 @@ const App = () => {
         );
       };
 
-      const shuntVisualX = getShuntVisualX(shuntAbsKm);
+      const shuntVisualX = Math.round(getShuntVisualX(shuntAbsKm));
 
       const svgWidth = 511;
       const svgHeight = 845;
@@ -1476,10 +1579,10 @@ const App = () => {
       ${getSvgString(ShuntSvgComponent)}
     </g>
     <text x="${shuntVisualX}" y="${
-        shunt.selectedLine === "downMain"
-          ? translateY + svgHeight * scale + 20
-          : translateY - 10
-      }" font-family="Arial" font-size="18" fill="#333" text-anchor="middle">
+      shunt.selectedLine === "downMain"
+        ? translateY + svgHeight * scale + 20
+        : translateY - 10
+    }" font-family="Arial" font-size="18" fill="#333" text-anchor="middle">
       ${shunt.shuntName} (${shunt.shuntAbs}km)
     </text>
   `);
@@ -1490,15 +1593,16 @@ const App = () => {
       const absKm = parseFloat(bslb.abs);
       if (isNaN(absKm)) return;
       const targetLine = trackLineYCoords.find(
-        (line) => line.direction === bslb.selectedLine
+        (line) => line.direction === bslb.selectedLine,
       );
       if (!targetLine) return;
 
       const getVisualX = (absKm) =>
         VIEWBOX_PADDING_X +
-        (((absKm - minOverallAbsKm) * 1000) / derivedTrackLengthMeters) *
+        (((absKm - targetLine.absMappingMin) * 1000) /
+          targetLine.physicalLengthMeters) *
           INTERNAL_SVG_TRACK_WIDTH;
-      const bslbVisualX = getVisualX(absKm);
+      const bslbVisualX = Math.round(getVisualX(absKm));
 
       const svgWidth = 133;
       const svgHeight = 71;
@@ -1530,15 +1634,15 @@ const App = () => {
       const verticalOffset = 8; // Adjust vertical offset for  placement of bslb (arrow tip)
       bslbSvgElements.push(`
     <g transform="translate(${translateX}, ${
-        translateY + verticalOffset
-      }) scale(${scale})">
+      translateY + verticalOffset
+    }) scale(${scale})">
       ${getSvgString(BslbSvgComponent)}
     </g>
     <text x="${bslbVisualX}" y="${
-        bslb.selectedLine === "downMain" && bslb.direction === "nominal"
-          ? targetLine.y1 - 55 * scale
-          : targetLine.y2 + 60 * scale
-      }" font-family="Arial" font-size="18" fill="#333" text-anchor="middle">
+      bslb.selectedLine === "downMain" && bslb.direction === "nominal"
+        ? targetLine.y1 - 55 * scale
+        : targetLine.y2 + 60 * scale
+    }" font-family="Arial" font-size="18" fill="#333" text-anchor="middle">
       BSLB (${bslb.abs}km)
     </text>
   `);
@@ -1549,7 +1653,7 @@ const App = () => {
       const absKm = parseFloat(cb.abs);
       if (isNaN(absKm)) return;
       const targetLine = trackLineYCoords.find(
-        (line) => line.direction === cb.selectedLine
+        (line) => line.direction === cb.selectedLine,
       );
       if (!targetLine) return;
 
@@ -1564,7 +1668,7 @@ const App = () => {
         );
       };
 
-      const cbVisualX = getCbVisualX(absKm);
+      const cbVisualX = Math.round(getCbVisualX(absKm));
 
       const svgWidth = 1382;
       const svgHeight = 1143;
@@ -1591,10 +1695,10 @@ const App = () => {
       ${getSvgString(CautionBoardSvgComponent)}
     </g>
     <text x="${cbVisualX}" y="${
-        cb.selectedLine === "downMain" && cb.direction === "nominal"
-          ? targetLine.y1 - 40 * scale
-          : targetLine.y2 + 60 * scale
-      }" font-family="Arial" font-size="18" fill="#333" text-anchor="middle">
+      cb.selectedLine === "downMain" && cb.direction === "nominal"
+        ? targetLine.y1 - 40 * scale
+        : targetLine.y2 + 60 * scale
+    }" font-family="Arial" font-size="18" fill="#333" text-anchor="middle">
       Caution Board (${cb.abs}km)
     </text>
   `);
@@ -1622,7 +1726,7 @@ const App = () => {
               INTERNAL_SVG_TRACK_WIDTH
           );
         };
-        const lcVisualX = getLcVisualX(absKm);
+        const lcVisualX = Math.round(getLcVisualX(absKm));
 
         let LCGateSvgComponent = null;
         let svgWidth = 0;
@@ -1695,18 +1799,19 @@ const App = () => {
 
         // Find the corresponding track line
         const targetLine = trackLineYCoords.find(
-          (line) => line.direction === section.selectedLine
+          (line) => line.direction === section.selectedLine,
         );
         if (!targetLine) return;
 
         // Map ABS to X coordinates
         const getVisualX = (absKm) =>
           VIEWBOX_PADDING_X +
-          (((absKm - minOverallAbsKm) * 1000) / derivedTrackLengthMeters) *
+          (((absKm - targetLine.absMappingMin) * 1000) /
+            targetLine.physicalLengthMeters) *
             INTERNAL_SVG_TRACK_WIDTH;
 
-        const x1 = getVisualX(startAbs);
-        const x2 = getVisualX(endAbs);
+        const x1 = Math.round(getVisualX(startAbs));
+        const x2 = Math.round(getVisualX(endAbs));
         const y = targetLine.centerY;
 
         // Draw vertical lines
@@ -1726,8 +1831,8 @@ const App = () => {
         // Arrow line
         trackSectionSvgElements.push(`
       <line x1="${arrowStartX + 2 * arrowHeadSize}" y1="${arrowLineY}" x2="${
-          arrowEndX - 2 * arrowHeadSize
-        }" y2="${arrowLineY}" stroke="${arrowColor}" stroke-width="3"/>
+        arrowEndX - 2 * arrowHeadSize
+      }" y2="${arrowLineY}" stroke="${arrowColor}" stroke-width="3"/>
       <!-- Left arrow head -->
       <polygon points="
         ${arrowStartX + arrowHeadSize},${arrowLineY}
@@ -1746,8 +1851,8 @@ const App = () => {
         const midX = (arrowStartX + arrowEndX) / 2;
         trackSectionSvgElements.push(`
       <text x="${midX}" y="${
-          arrowLineY - 22
-        }" font-family="Arial" font-size="20" fill="#000000ff" text-anchor="middle" font-weight="bold">
+        arrowLineY - 22
+      }" font-family="Arial" font-size="20" fill="#000000ff" text-anchor="middle" font-weight="bold">
         ${section.trackSectionName || section.title || ""}
       </text>
     `);
@@ -1828,7 +1933,7 @@ const App = () => {
       newWindow.document.close();
     } else {
       alert(
-        "Pop-up blocked! Please allow pop-ups for this site to view the SVG."
+        "Pop-up blocked! Please allow pop-ups for this site to view the SVG.",
       );
     }
   };
@@ -1847,6 +1952,43 @@ const App = () => {
     points,
     trackSections,
   });
+
+  const handleSaveClick = async () => {
+    const filename = prompt("Please enter a name for your configuration:");
+    if (filename) {
+      // Gather all your config data into one object
+      const configData = {
+        stationA,
+        stationB,
+        tracks,
+        globalTagConfigs,
+        tagRanges,
+        signals,
+        shunts,
+        bslbs,
+        cautionBoards,
+        lcGates,
+        points,
+        trackSections,
+      };
+
+      await fetch("http://localhost:5000/api/save-config-as", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename, configData }),
+      });
+      alert("Configuration saved!");
+    }
+  };
+
+  const handleLoadClick = async () => {
+    const response = await fetch("http://localhost:5000/api/list-configs");
+    const data = await response.json();
+    if (data.success) {
+      setConfigFiles(data.files);
+      setShowLoadModal(true); // Show a modal with the list of files
+    }
+  };
 
   const saveConfiguration = async () => {
     try {
@@ -1870,9 +2012,11 @@ const App = () => {
     }
   };
 
-  const loadConfiguration = async () => {
+  const loadConfiguration = async (filename) => {
     try {
-      const response = await fetch("http://localhost:5000/api/load-config");
+      const response = await fetch(
+        `http://localhost:5000/api/load-config/${filename}`,
+      );
       const data = await response.json();
       if (data.success) {
         const loadedData = data.data;
@@ -1895,7 +2039,7 @@ const App = () => {
             focusFrom: t.focusFrom !== null ? t.focusFrom.toString() : "",
             focusTo: t.focusTo !== null ? t.focusTo.toString() : "",
             trackPosition: t.trackPosition,
-          }))
+          })),
         );
         setTrackSections(
           loadedData.trackSections && loadedData.trackSections.length > 0
@@ -1918,7 +2062,7 @@ const App = () => {
                 //   startAbs: "",
                 //   endAbs: "",
                 // },
-              ]
+              ],
         );
 
         // setTrackSections(
@@ -1974,7 +2118,7 @@ const App = () => {
                 ? gt.distanceBetweenTagsMeters.toString()
                 : "",
             tagId: gt.tagId !== null ? gt.tagId.toString() : "",
-          }))
+          })),
         );
 
         setTagRanges(
@@ -1984,7 +2128,7 @@ const App = () => {
                 start: r.start !== undefined ? r.start.toString() : "",
                 end: r.end !== undefined ? r.end.toString() : "",
               }))
-            : [{ id: 1, start: "", end: "" }]
+            : [{ id: 1, start: "", end: "" }],
         );
         const maxTagRangeId =
           loadedData.tagRanges && loadedData.tagRanges.length > 0
@@ -1996,32 +2140,32 @@ const App = () => {
           loadedData.signals.map((s) => ({
             ...s,
             signalAbs: s.signalAbs !== null ? s.signalAbs.toString() : "",
-          }))
+          })),
         );
         setShunts(
           loadedData.shunts.map((s) => ({
             ...s,
             shuntAbs: s.shuntAbs !== null ? s.shuntAbs.toString() : "",
-          }))
+          })),
         );
         setBslbs(
           loadedData.bslbs.map((b) => ({
             ...b,
             abs: b.abs !== null ? b.abs.toString() : "",
-          }))
+          })),
         );
         setCautionBoards(
           loadedData.cautionBoards.map((cb) => ({
             ...cb,
             abs: cb.abs !== null ? cb.abs.toString() : "",
-          }))
+          })),
         );
         setLcGates(
           loadedData.lcGates.map((lc) => ({
             ...lc,
             lcNumber: lc.lcNumber !== null ? lc.lcNumber.toString() : "",
             abs: lc.abs !== null ? lc.abs.toString() : "",
-          }))
+          })),
         );
         setPoints(
           loadedData.points.map((p) => ({
@@ -2029,7 +2173,7 @@ const App = () => {
             pointA: p.pointA !== null ? p.pointA.toString() : "",
             pointB: p.pointB !== null ? p.pointB.toString() : "",
             abs: p.abs !== null ? p.abs.toString() : "",
-          }))
+          })),
         );
 
         const maxTrackId =
@@ -2100,6 +2244,76 @@ const App = () => {
         margin: "0",
       }}
     >
+      {showLoadModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: "20px 30px",
+              borderRadius: "8px",
+              width: "400px",
+              maxHeight: "80vh",
+              overflowY: "auto",
+              boxShadow: "0 5px 15px rgba(0,0,0,0.3)",
+            }}
+          >
+            <h3 style={{ marginTop: 0 }}>Select a Configuration to Load</h3>
+            {configFiles.length > 0 ? (
+              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                {configFiles.map((file) => (
+                  <li
+                    key={file}
+                    onClick={() => {
+                      loadConfiguration(file);
+                      setShowLoadModal(false);
+                    }}
+                    style={{
+                      padding: "12px",
+                      cursor: "pointer",
+                      borderBottom: "1px solid #eee",
+                      fontSize: "16px",
+                    }}
+                    onMouseOver={(e) =>
+                      (e.currentTarget.style.backgroundColor = "#f0f0f0")
+                    }
+                    onMouseOut={(e) =>
+                      (e.currentTarget.style.backgroundColor = "transparent")
+                    }
+                  >
+                    {file}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No saved configurations found.</p>
+            )}
+            <button
+              onClick={() => setShowLoadModal(false)}
+              style={{
+                marginTop: "20px",
+                padding: "10px 15px",
+                width: "100%",
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       <h1>Track Layout Generator</h1>
 
       <div
@@ -2180,105 +2394,118 @@ const App = () => {
           >
             Signals
           </button>
-          <button
-            onClick={() => setActiveAppTab("shunts")}
-            style={{
-              padding: "8px 12px",
-              backgroundColor:
-                activeAppTab === "shunts" ? "#007bff" : "#e9ecef",
-              color: activeAppTab === "shunts" ? "white" : "#333",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontSize: "14px",
-            }}
-          >
-            Shunts
-          </button>
+          {!disabledTabs.includes("shunts") && (
+            <button
+              onClick={() => setActiveAppTab("shunts")}
+              style={{
+                padding: "8px 12px",
+                backgroundColor:
+                  activeAppTab === "shunts" ? "#007bff" : "#e9ecef",
+                color: activeAppTab === "shunts" ? "white" : "#333",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "14px",
+              }}
+            >
+              Shunts
+            </button>
+          )}
 
-          <button
-            onClick={() => setActiveAppTab("bslb")}
-            style={{
-              padding: "8px 12px",
-              backgroundColor: activeAppTab === "bslb" ? "#007bff" : "#e9ecef",
-              color: activeAppTab === "bslb" ? "white" : "#333",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontSize: "14px",
-              marginLeft: "8px",
-            }}
-          >
-            BSLB
-          </button>
+          {!disabledTabs.includes("bslb") && (
+            <button
+              onClick={() => setActiveAppTab("bslb")}
+              style={{
+                padding: "8px 12px",
+                backgroundColor:
+                  activeAppTab === "bslb" ? "#007bff" : "#e9ecef",
+                color: activeAppTab === "bslb" ? "white" : "#333",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "14px",
+                marginLeft: "8px",
+              }}
+            >
+              BSLB
+            </button>
+          )}
 
-          <button
-            onClick={() => setActiveAppTab("cautionBoards")}
-            style={{
-              padding: "8px 12px",
-              backgroundColor:
-                activeAppTab === "cautionBoards" ? "#007bff" : "#e9ecef",
-              color: activeAppTab === "cautionBoards" ? "white" : "#333",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontSize: "14px",
-              marginLeft: "8px",
-            }}
-          >
-            Caution Boards
-          </button>
+          {!disabledTabs.includes("cautionBoards") && (
+            <button
+              onClick={() => setActiveAppTab("cautionBoards")}
+              style={{
+                padding: "8px 12px",
+                backgroundColor:
+                  activeAppTab === "cautionBoards" ? "#007bff" : "#e9ecef",
+                color: activeAppTab === "cautionBoards" ? "white" : "#333",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "14px",
+                marginLeft: "8px",
+              }}
+            >
+              Caution Boards
+            </button>
+          )}
 
-          <button
-            onClick={() => setActiveAppTab("lcGates")}
-            style={{
-              padding: "8px 12px",
-              backgroundColor:
-                activeAppTab === "lcGates" ? "#007bff" : "#e9ecef",
-              color: activeAppTab === "lcGates" ? "white" : "#333",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontSize: "14px",
-              marginLeft: "8px",
-            }}
-          >
-            LC Gates
-          </button>
+          {!disabledTabs.includes("lcGates") && (
+            <button
+              onClick={() => setActiveAppTab("lcGates")}
+              style={{
+                padding: "8px 12px",
+                backgroundColor:
+                  activeAppTab === "lcGates" ? "#007bff" : "#e9ecef",
+                color: activeAppTab === "lcGates" ? "white" : "#333",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "14px",
+                marginLeft: "8px",
+              }}
+            >
+              LC Gates
+            </button>
+          )}
 
-          <button
-            onClick={() => setActiveAppTab("points")}
-            style={{
-              padding: "8px 12px",
-              backgroundColor:
-                activeAppTab === "points" ? "#007bff" : "#e9ecef",
-              color: activeAppTab === "points" ? "white" : "#333",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontSize: "14px",
-              marginLeft: "8px",
-            }}
-          >
-            Points
-          </button>
+          {!disabledTabs.includes("points") && (
+            <button
+              onClick={() => setActiveAppTab("points")}
+              style={{
+                padding: "8px 12px",
+                backgroundColor:
+                  activeAppTab === "points" ? "#007bff" : "#e9ecef",
+                color: activeAppTab === "points" ? "white" : "#333",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "14px",
+                marginLeft: "8px",
+              }}
+            >
+              Points
+            </button>
+          )}
 
-          <button
-            onClick={() => setActiveAppTab("trackSections")}
-            style={{
-              padding: "8px 12px",
-              backgroundColor:
-                activeAppTab === "trackSections" ? "#007bff" : "#e9ecef",
-              color: activeAppTab === "trackSections" ? "white" : "#333",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontSize: "14px",
-              marginLeft: "8px",
-            }}
-          >
-            Track Sections
-          </button>
+          {!disabledTabs.includes("trackSections") && (
+            <button
+              onClick={() => setActiveAppTab("trackSections")}
+              style={{
+                padding: "8px 12px",
+                backgroundColor:
+                  activeAppTab === "trackSections" ? "#007bff" : "#e9ecef",
+                color: activeAppTab === "trackSections" ? "white" : "#333",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "14px",
+                marginLeft: "8px",
+              }}
+            >
+              Track Sections
+            </button>
+          )}
         </div>
       </div>
 
@@ -2377,6 +2604,7 @@ const App = () => {
                 onUpdate={handleGlobalTagChange}
                 onRemove={handleRemoveTagConfig}
                 tagTypes={tagTypes}
+                versionTypes={versionTypes}
                 lineOptions={availableLineOptions}
                 stationAAbsKm={stationAAbsKm}
                 stationBAbsKm={stationBAbsKm}
@@ -2395,21 +2623,7 @@ const App = () => {
               Signals Configuration
             </h3>
 
-            <button
-              onClick={handleAddSignal}
-              style={{
-                padding: "10px 20px",
-                backgroundColor: "#28a745",
-                color: "white",
-                border: "none",
-                borderRadius: "5px",
-                cursor: "pointer",
-                fontSize: "16px",
-                marginBottom: "20px",
-              }}
-            >
-              Add New Signal Configuration
-            </button>
+ 
 
             {signals.length === 0 && (
               <p
@@ -2436,10 +2650,26 @@ const App = () => {
                 isTrackLengthDefined={isTrackLengthDefined}
               />
             ))}
+
+                       <button
+              onClick={handleAddSignal}
+              style={{
+                padding: "10px 20px",
+                backgroundColor: "#28a745",
+                color: "white",
+                border: "none",
+                borderRadius: "5px",
+                cursor: "pointer",
+                fontSize: "16px",
+                marginBottom: "20px",
+              }}
+            >
+              Add New Signal Configuration
+            </button>
           </div>
         )}
 
-        {activeAppTab === "shunts" && (
+        {activeAppTab === "shunts" && !disabledTabs.includes("shunts") && (
           <div style={{ padding: "15px" }}>
             <h3 style={{ marginTop: "0", marginBottom: "20px", color: "#333" }}>
               Shunts Configuration
@@ -2486,7 +2716,7 @@ const App = () => {
           </div>
         )}
 
-        {activeAppTab === "bslb" && (
+        {activeAppTab === "bslb" && !disabledTabs.includes("bslb") && (
           <div style={{ padding: "15px" }}>
             <h3 style={{ marginTop: "0", marginBottom: "20px", color: "#333" }}>
               BSLB Configuration
@@ -2535,54 +2765,57 @@ const App = () => {
           </div>
         )}
 
-        {activeAppTab === "cautionBoards" && (
-          <div style={{ padding: "15px" }}>
-            <h3 style={{ marginTop: "0", marginBottom: "20px", color: "#333" }}>
-              Caution Boards Configuration
-            </h3>
-            <button
-              onClick={handleAddCautionBoard}
-              style={{
-                padding: "10px 20px",
-                backgroundColor: "#28a745",
-                color: "white",
-                border: "none",
-                borderRadius: "5px",
-                cursor: "pointer",
-                fontSize: "16px",
-                marginBottom: "20px",
-              }}
-            >
-              Add New Caution Board
-            </button>
-            {cautionBoards.length === 0 && (
-              <p
+        {activeAppTab === "cautionBoards" &&
+          !disabledTabs.includes("cautionBoards") && (
+            <div style={{ padding: "15px" }}>
+              <h3
+                style={{ marginTop: "0", marginBottom: "20px", color: "#333" }}
+              >
+                Caution Boards Configuration
+              </h3>
+              <button
+                onClick={handleAddCautionBoard}
                 style={{
-                  textAlign: "center",
-                  color: "#666",
-                  marginTop: "20px",
+                  padding: "10px 20px",
+                  backgroundColor: "#28a745",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "5px",
+                  cursor: "pointer",
+                  fontSize: "16px",
+                  marginBottom: "20px",
                 }}
               >
-                No Caution Boards added yet.
-              </p>
-            )}
-            {cautionBoards.map((cb) => (
-              <CautionBoardFormCard
-                key={cb.id}
-                cb={cb}
-                onUpdate={handleUpdateCautionBoard}
-                onRemove={handleRemoveCautionBoard}
-                lineOptions={[
-                  { value: "downMain", label: "Down Main" },
-                  { value: "upMain", label: "Up Main" },
-                ]}
-                isTrackLengthDefined={isTrackLengthDefined}
-                stationAAbsKm={stationAAbsKm}
-                stationBAbsKm={stationBAbsKm}
-              />
-            ))}
-          </div>
-        )}
+                Add New Caution Board
+              </button>
+              {cautionBoards.length === 0 && (
+                <p
+                  style={{
+                    textAlign: "center",
+                    color: "#666",
+                    marginTop: "20px",
+                  }}
+                >
+                  No Caution Boards added yet.
+                </p>
+              )}
+              {cautionBoards.map((cb) => (
+                <CautionBoardFormCard
+                  key={cb.id}
+                  cb={cb}
+                  onUpdate={handleUpdateCautionBoard}
+                  onRemove={handleRemoveCautionBoard}
+                  lineOptions={[
+                    { value: "downMain", label: "Down Main" },
+                    { value: "upMain", label: "Up Main" },
+                  ]}
+                  isTrackLengthDefined={isTrackLengthDefined}
+                  stationAAbsKm={stationAAbsKm}
+                  stationBAbsKm={stationBAbsKm}
+                />
+              ))}
+            </div>
+          )}
 
         {activeAppTab === "lcGates" && (
           <div style={{ padding: "15px" }}>
@@ -2728,7 +2961,7 @@ const App = () => {
           }}
         >
           <button
-            onClick={saveConfiguration}
+            onClick={handleSaveClick}
             style={{
               padding: "10px 20px",
               backgroundColor: "#4CAF50",
@@ -2743,7 +2976,7 @@ const App = () => {
             Save Configuration
           </button>
           <button
-            onClick={loadConfiguration}
+            onClick={handleLoadClick}
             style={{
               padding: "10px 20px",
               backgroundColor: "#f44336",

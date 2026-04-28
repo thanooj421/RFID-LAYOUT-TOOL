@@ -8,6 +8,7 @@ const GlobalTagFormCard = ({
   onUpdate,
   onRemove,
   tagTypes,
+  versionTypes,
   lineOptions,
   stationAAbsKm,
   stationBAbsKm,
@@ -52,7 +53,6 @@ const GlobalTagFormCard = ({
         Tag Configuration {tagConfig.id}
       </h4>
       <RemoveButton onClick={() => onRemove(tagConfig.id)} />
-
       <div style={{ marginBottom: "15px" }}>
         <label
           htmlFor={`tagSelectLine-${tagConfig.id}`}
@@ -78,7 +78,6 @@ const GlobalTagFormCard = ({
           ))}
         </select>
       </div>
-
       <div style={{ marginBottom: "15px" }}>
         <label
           htmlFor={`tagDirection-${tagConfig.id}`}
@@ -97,17 +96,17 @@ const GlobalTagFormCard = ({
             width: "216px",
           }}
         >
-          <option value="nominal">Nominal (Increasing ABS Order)</option>
-          <option value="reverse">Reverse (Decreasing ABS Order)</option>
+          <option value="nominal">Nominal</option> {/*(Increasing ABS Order) */}
+          <option value="reverse">Reverse</option>{" "}
+          {/*  (Decreasing ABS Order) */}
         </select>
       </div>
-
       <div style={{ marginBottom: "15px" }}>
         <label
           htmlFor={`tagType-${tagConfig.id}`}
           style={{ display: "block", marginBottom: "5px" }}
         >
-          Tag type:
+          Type of Tag:
         </label>
         <select
           id={`tagType-${tagConfig.id}`}
@@ -127,8 +126,33 @@ const GlobalTagFormCard = ({
           ))}
         </select>
       </div>
-
+      {/* Newly added version type selection */}
       <div style={{ marginBottom: "15px" }}>
+        <label
+          htmlFor="versionType"
+          style={{ display: "block", marginBottom: "5px" }}
+        >
+          Version Type:
+        </label>
+        <select
+          id={`versionType-${tagConfig.id}`}
+          value={tagConfig.versionType || "v2"}
+          onChange={handleChange("versionType")}
+          style={{
+            padding: "8px",
+            borderRadius: "4px",
+            border: "1px solid #ccc",
+            width: "216px",
+          }}
+        >
+          {versionTypes.map((version) => (
+            <option key={version.value} value={version.value}>
+              {version.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      {/*  <div style={{ marginBottom: "15px" }}>
         <label
           htmlFor={`numTags-${tagConfig.id}`}
           style={{ display: "block", marginBottom: "5px" }}
@@ -149,8 +173,7 @@ const GlobalTagFormCard = ({
             width: "200px",
           }}
         />
-      </div>
-
+      </div> */}
       <div style={{ marginBottom: "15px" }}>
         <label
           htmlFor={`tagId-${tagConfig.id}`}
@@ -172,13 +195,12 @@ const GlobalTagFormCard = ({
           }}
         />
       </div>
-
       <div style={{ marginBottom: "15px" }}>
         <label
           htmlFor={`tagStartAbs-${tagConfig.id}`}
           style={{ display: "block", marginBottom: "5px" }}
         >
-          Tag start ABS (kilometers):
+          Tag Absolute Location (Kilometers):
         </label>
         <input
           type="text"
@@ -187,7 +209,7 @@ const GlobalTagFormCard = ({
           onChange={handleChange("tagStartAbs")}
           onBlur={handleBlur("tagStartAbs")}
           placeholder={`e.g., ${stationAAbsKm.toFixed(3)} km`}
-          disabled={!isTrackLengthDefined}
+          // disabled={!isTrackLengthDefined}
           style={{
             padding: "8px",
             borderRadius: "4px",
@@ -196,8 +218,7 @@ const GlobalTagFormCard = ({
           }}
         />
       </div>
-
-      <div style={{ marginBottom: "15px" }}>
+      {/*  <div style={{ marginBottom: "15px" }}>
         <label
           htmlFor={`tagEndAbs-${tagConfig.id}`}
           style={{ display: "block", marginBottom: "5px" }}
@@ -219,8 +240,8 @@ const GlobalTagFormCard = ({
             width: "200px",
           }}
         />
-      </div>
-
+      </div> */}
+      {/*}
       <div style={{ marginBottom: "15px" }}>
         <label
           htmlFor={`distanceBetweenTagsMeters-${tagConfig.id}`}
@@ -243,7 +264,7 @@ const GlobalTagFormCard = ({
             width: "200px",
           }}
         />
-      </div>
+      </div> */}
     </div>
   );
 };

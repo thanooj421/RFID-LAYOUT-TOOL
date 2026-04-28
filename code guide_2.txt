@@ -1,3 +1,40 @@
+That is an excellent and very important question. You have correctly identified a critical scenario that needs to be handled properly. My previous code did not explicitly address this, and your question highlights a potential for data corruption.
+
+Let me clarify how file systems work and then provide the corrected code that handles this situation robustly.
+
+### The Situation: Overwriting a File
+
+First, it's important to understand that a single folder on a computer **cannot contain two files with the exact same name**.
+
+When you save a file named `my_layout_1.db`, the file is created. If you then try to save another file with the *exact same name* (`my_layout_1.db`) in the *exact same folder*, the operating system does not create a second, duplicate file. Instead, it **overwrites** the original file.
+
+So, the user would not be confused by two files with the same name; they would be surprised that their old `my_layout_1` was replaced by the new one.
+
+### The Problem in My Previous Code
+
+Your question is very sharp because it reveals a flaw in the code I provided. In that code, when you save with an existing filename, the logic does this:
+
+1.  It finds the existing file (`my_layout_1.db`).
+2.  It opens it.
+3.  It then tries to `INSERT` all the new data into the tables that *already contain the old data*.
+
+This would result in a messy, corrupted file containing both the old and the new data mixed together, which is not what you want.
+
+### The Solution: A True "Save and Replace"
+
+The correct and safe behavior is that if a user chooses to save with a name that already exists, the application should completely **replace** the old file with a new, clean one containing only the current data.
+
+To achieve this, we need to add one simple check: **Before creating the new database file, check if a file with that name already exists. If it does, delete it first.**
+
+This ensures that every save operation, whether it's a new file or an overwrite, results in a perfect, clean snapshot of the current configuration.
+
+---
+
+### Corrected server.js Code
+
+Here is the updated server.js file with the fix included. I have added a comment to show you exactly where the new logic is.
+
+````javascript
 // server/server.js
 
 const express = require("express");
@@ -140,7 +177,16 @@ app.post("/api/save-config-as", (req, res) => {
   }
 
   const dbPath = path.join(configsDir, `${safeFilename}.db`);
-  const db = new Database(dbPath); // Create or open the specific database file
+
+  // --- THIS IS THE FIX ---
+  // If a file with the same name already exists, delete it first.
+  // This ensures that every "save" is a clean, complete snapshot.
+  if (fs.existsSync(dbPath)) {
+    fs.unlinkSync(dbPath);
+  }
+  // --- END OF FIX ---
+
+  const db = new Database(dbPath); // Now, this will always create a fresh file.
 
   try {
     // Step 1: Create the full schema in the new database file
@@ -247,11 +293,7 @@ app.post("/api/save-config-as", (req, res) => {
         "INSERT INTO caution_boards (selected_line, direction, abs) VALUES (?, ?, ?)"
       );
       cautionBoards.forEach((cb) =>
-        insertCautionBoard.run(
-          cb.selectedLine,
-          cb.direction,
-          parseFloat(cb.abs)
-        )
+        insertCautionBoard.run(cb.selectedLine, cb.direction, parseFloat(cb.abs))
       );
 
       const insertLcGate = db.prepare(
@@ -295,10 +337,9 @@ app.post("/api/save-config-as", (req, res) => {
     });
   } catch (error) {
     console.error("Database save error:", error);
-    res.status(500).json({
-      success: false,
-      message: `Failed to save configuration: ${error.message}`,
-    });
+    res
+      .status(500)
+      .json({ success: false, message: `Failed to save configuration: ${error.message}` });
   } finally {
     if (db) db.close(); // Always close the database connection
   }
@@ -452,3 +493,4 @@ app.get("/api/load-config/:filename", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Backend server running on http://localhost:${PORT}`);
 });
+````
